@@ -10,6 +10,7 @@ import {
     KeyboardAvoidingView,
     Platform,
     ScrollView,
+    Alert, // นำเข้า Alert สำหรับแจ้งเตือน
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
@@ -23,19 +24,41 @@ export default function SignUpScreen({ navigation }: Props) {
     const [confirmPassword, setConfirmPassword] = useState('');
 
     const handleSignUp = () => {
+        // 1. ตรวจสอบว่ากรอกครบทุกช่องหรือไม่
+        if (!username.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
+            Alert.alert('แจ้งเตือน', 'กรุณากรอกข้อมูลให้ครบทุกช่อง');
+            return;
+        }
+
+        // 2. ตรวจสอบ Password: ต้องมี ตัวใหญ่ (A-Z), ตัวเล็ก (a-z) และ ตัวเลข (0-9)
+        const hasUpperCase = /[A-Z]/.test(password);
+        const hasLowerCase = /[a-z]/.test(password);
+        const hasNumber = /[0-9]/.test(password);
+
+        if (!hasUpperCase || !hasLowerCase || !hasNumber) {
+            Alert.alert(
+                'แจ้งเตือน',
+                'รหัสผ่านต้องประกอบด้วยตัวอักษรพิมพ์ใหญ่ ตัวพิมพ์เล็ก และตัวเลข'
+            );
+            return;
+        }
+
+        // 3. ตรวจสอบว่า Confirm Password ตรงกับ Password หรือไม่
+        if (password !== confirmPassword) {
+            Alert.alert('แจ้งเตือน', 'Password และ Confirm Password ไม่ตรงกัน');
+            return;
+        }
+
         const userData = {
             Username: username,
             Email: email,
             Password: password,
         };
 
-        if (password !== confirmPassword) {
-            console.log('Password and Confirm Password do not match!');
-            return;
-        }
-
         console.log('Sign up payload for Database:', userData);
-        // TODO: ใส่โค้ด fetch หรือ axios เพื่อส่ง userData ไปบันทึกในฐานข้อมูลตรงนี้
+        // TODO: ส่งข้อมูลไปยัง Database / API ตรงนี้
+
+        navigation.replace('WelcomeHome' as any, { username });
     };
 
     const handleGoogleSignUp = () => {
