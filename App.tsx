@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
@@ -7,18 +7,24 @@ import SignInScreen from './src/screens/SignInScreen';
 import SignUpScreen from './src/screens/SignUpScreen';
 import WelcomeHome from './src/screens/WelcomeHome';
 import HomeScreen from './src/screens/HomeScreen';
+import { configureGoogleSignIn } from './src/services/googleAuth';
 
 // 2. ประกาศ Route และ Param ของแต่ละหน้าใน RootStackParamList
 export type RootStackParamList = {
   SignIn: undefined;
   SignUp: undefined;
-  WelcomeHome: { username?: string }; // รองรับการส่ง parameter ชื่อผู้ใช้
+  WelcomeHome: { username?: string; mode?: 'login' | 'signup' }; // รองรับการส่ง parameter ชื่อผู้ใช้ + โหมด (login/signup) เพื่อโชว์ข้อความให้ตรงบริบท
   Home: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
+  useEffect(() => {
+    // ต้อง configure ก่อนเรียก signInWithGoogle() ที่หน้า SignIn
+    configureGoogleSignIn();
+  }, []);
+
   return (
     <NavigationContainer>
       <Stack.Navigator

@@ -6,8 +6,11 @@ import type { RootStackParamList } from '../../App';
 type Props = NativeStackScreenProps<RootStackParamList, 'WelcomeHome'>;
 
 export default function WelcomeHome({ navigation, route }: Props) {
-    // รับ username ที่ส่งมาจาก SignUpScreen (ถ้ามี)
+    // รับ username ที่ส่งมาจาก SignIn/SignUpScreen (ถ้ามี)
     const username = route.params?.username ?? 'User';
+    // โหมด 'login' มาจากหน้า SignIn (ล็อกอินสำเร็จจริง), ถ้าไม่ระบุถือว่ามาจาก SignUp
+    const mode = route.params?.mode ?? 'signup';
+    const isLogin = mode === 'login';
 
     useEffect(() => {
         // ตั้งเวลา 2.5 วินาที แล้วพาไปหน้า Home อัตโนมัติ
@@ -21,8 +24,12 @@ export default function WelcomeHome({ navigation, route }: Props) {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.badge}>🎉 Account Created!</Text>
-            <Text style={styles.title}>ยินดีต้อนรับสู่ GachaAddict</Text>
+            <Text style={styles.badge}>
+                {isLogin ? '✅ เข้าสู่ระบบสำเร็จ!' : '🎉 Account Created!'}
+            </Text>
+            <Text style={styles.title}>
+                {isLogin ? 'ยินดีต้อนรับกลับมา' : 'ยินดีต้อนรับสู่ GachaAddict'}
+            </Text>
             <Text style={styles.usernameText}>คุณ {username}</Text>
             
             <View style={styles.loadingContainer}>
