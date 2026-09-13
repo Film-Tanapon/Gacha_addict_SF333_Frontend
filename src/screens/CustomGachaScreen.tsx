@@ -60,7 +60,7 @@ export default function CustomGachaScreen({ navigation }: Props) {
                 style={styles.card}
                 activeOpacity={0.75}
                 accessibilityLabel="Create new gacha"
-                onPress={() => navigation.navigate('GachaForm', {})}
+                onPress={() => navigation.navigate('CreateCustom', {})}
               />
             ))}
           </View>
@@ -70,7 +70,7 @@ export default function CustomGachaScreen({ navigation }: Props) {
         <BottomTabBar
           active="Home"
           onNavigate={tab => navigation.replace(tab as any)}
-          onAddPress={() => navigation.navigate('GachaForm', {})}
+          onAddPress={() => navigation.navigate('CreateCustom', {})}
         />
       </View>
     </SafeAreaView>

@@ -88,7 +88,7 @@ export default function FavoriteScreen({ navigation }: Props) {
       <BottomTabBar
         active="Favorite"
         onNavigate={tab => navigation.replace(tab as any)}
-        onAddPress={() => navigation.navigate('GachaForm', {})}
+        onAddPress={() => navigation.navigate('CreateCustom', {})}
       />
     </SafeAreaView>
   );

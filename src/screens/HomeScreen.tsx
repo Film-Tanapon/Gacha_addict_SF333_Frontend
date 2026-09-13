@@ -192,7 +192,7 @@ export default function HomeScreen({ navigation, route }: Props) {
         <BottomTabBar
           active="Home"
           onNavigate={tab => navigation.replace(tab, { username } as any)}
-          onAddPress={() => navigation.navigate('GachaForm', {})}
+          onAddPress={() => navigation.navigate('CreateCustom', {})}
         />
       </View>
     </SafeAreaView>

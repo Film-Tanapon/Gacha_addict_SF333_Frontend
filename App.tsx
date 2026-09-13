@@ -15,10 +15,6 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import FavoriteScreen from './src/screens/FavoriteScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import CustomGachaScreen from './src/screens/CustomGachaScreen';
-import GachaDetailScreen from './src/screens/GachaDetailScreen';
-import GachaFormScreen from './src/screens/GachaFormScreen';
-import GachaResultScreen from './src/screens/GachaResultScreen';
-import ThemeShopScreen from './src/screens/ThemeShopScreen';
 import { configureGoogleSignIn } from './src/services/googleAuth';
 
 // 2. ประกาศ Route และ Param ของแต่ละหน้า
@@ -84,10 +80,6 @@ export default function App() {
         <Stack.Screen name="Favorite" component={FavoriteScreen} />
         <Stack.Screen name="History" component={HistoryScreen} />
         <Stack.Screen name="CustomGacha" component={CustomGachaScreen} />
-        <Stack.Screen name="GachaDetail" component={GachaDetailScreen} />
-        <Stack.Screen name="GachaForm" component={GachaFormScreen} />
-        <Stack.Screen name="GachaResult" component={GachaResultScreen} />
-        <Stack.Screen name="ThemeShop" component={ThemeShopScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

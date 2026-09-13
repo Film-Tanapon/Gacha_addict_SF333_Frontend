@@ -247,7 +247,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
       <BottomTabBar
         active="Profile"
         onNavigate={tab => navigation.replace(tab, { username } as any)}
-        onAddPress={() => navigation.navigate('GachaForm', {})}
+        onAddPress={() => navigation.navigate('CreateCustom', {})}
       />
     </SafeAreaView>
   );

@@ -62,7 +62,7 @@ export default function HistoryScreen({ navigation }: Props) {
       <BottomTabBar
         active="History"
         onNavigate={tab => navigation.replace(tab as any)}
-        onAddPress={() => navigation.navigate('GachaForm', {})}
+        onAddPress={() => navigation.navigate('CreateCustom', {})}
       />
     </SafeAreaView>
   );

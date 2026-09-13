@@ -21,25 +21,22 @@ export default function CreateCustomScreen({ navigation, route }: Props) {
     const params = route?.params || {};
     const username = (params as any)?.username || null;
 
-    // --- State ตาม ER Diagram ---
     const [title, setTitle] = useState('');
     const [cardImage, setCardImage] = useState<string | null>(null);
     const [isEqualRate, setIsEqualRate] = useState<boolean>(true);
-    const [animation, setAnimation] = useState<string>('anim1'); // เริ่มต้นที่ตัวแรก
+    const [animation, setAnimation] = useState<string>('anim1');
     const [frameId, setFrameId] = useState<string | null>(null);
 
-    const [selectedColor, setSelectedColor] = useState('#ff69b4');   // สีที่เลือกปัจจุบัน
-    const [customColors, setCustomColors] = useState<string[]>([]);  // สี Custom ที่เพิ่มเข้ามา
+    const [selectedColor, setSelectedColor] = useState('#ff69b4');
+    const [customColors, setCustomColors] = useState<string[]>([]);
 
-    // State สำหรับ Modal เลือกสีแบบ Color Picker
     const [isColorModalVisible, setIsColorModalVisible] = useState(false);
-    const [pickerColor, setPickerColor] = useState('#3b82f6'); // สีชั่วคราวใน Modal
+    const [pickerColor, setPickerColor] = useState('#3b82f6');
 
-    // ตาราง Card_Items (เก็บ rate เป็น string เพื่อให้พิมพ์ทศนิยมได้สะดวก)
-    const [cardItems, setCardItems] = useState<{ name: string; rate: string }[]>([]);
+    const [cardItems, setCardItems] = useState<{ name: string; weight: string }[]>([]);
 
     const handleAddItem = () => {
-        setCardItems([...cardItems, { name: '', rate: '1' }]);
+        setCardItems([...cardItems, { name: '', weight: '1' }]);
     };
 
     const handleItemNameChange = (text: string, index: number) => {
@@ -48,18 +45,18 @@ export default function CreateCustomScreen({ navigation, route }: Props) {
         setCardItems(updated);
     };
 
-    const handleRateTextChange = (text: string, index: number) => {
+    const handleWeightTextChange = (text: string, index: number) => {
         const updated = [...cardItems];
-        updated[index].rate = text;
+        updated[index].weight = text;
         setCardItems(updated);
     };
 
-    const handleRateAdjust = (index: number, delta: number) => {
+    const handleWeightAdjust = (index: number, delta: number) => {
         if (isEqualRate) return;
         const updated = [...cardItems];
-        const currentVal = parseFloat(updated[index].rate) || 0;
-        const newRate = Math.max(0.1, parseFloat((currentVal + delta).toFixed(2)));
-        updated[index].rate = newRate.toString();
+        const currentVal = parseFloat(updated[index].weight) || 0;
+        const newWeight = Math.max(0.1, parseFloat((currentVal + delta).toFixed(2)));
+        updated[index].weight = newWeight.toString();
         setCardItems(updated);
     };
 
@@ -76,18 +73,30 @@ export default function CreateCustomScreen({ navigation, route }: Props) {
         setIsColorModalVisible(false);
     };
 
+    const totalWeight = cardItems.reduce((sum, item) => sum + (parseFloat(item.weight) || 0), 0);
+
     const handleSave = () => {
         if (!title.trim()) {
             Alert.alert('Notice', 'Please enter a Gacha Name.');
             return;
         }
 
+        const totalItems = cardItems.length;
+        const equalRateVal = totalItems > 0 ? parseFloat((100 / totalItems).toFixed(2)) : 0;
+
         const formattedItems = cardItems
             .filter(item => item.name.trim() !== '')
-            .map(item => ({
-                name: item.name,
-                rate: parseFloat(item.rate) || 1,
-            }));
+            .map(item => {
+                let finalRate = equalRateVal;
+                if (!isEqualRate) {
+                    const w = parseFloat(item.weight) || 0;
+                    finalRate = totalWeight > 0 ? parseFloat(((w / totalWeight) * 100).toFixed(2)) : 0;
+                }
+                return {
+                    name: item.name,
+                    rate: finalRate,
+                };
+            });
 
         const newCardData = {
             Title: title,
@@ -105,12 +114,14 @@ export default function CreateCustomScreen({ navigation, route }: Props) {
     };
 
     const defaultColors = ['#ff69b4', '#00bfff', '#ffe44d', '#90ee90', '#ba55d3', '#ffa500', '#696969'];
-    
     const extendedPalette = [
         '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#10b981', '#06b6d4',
         '#3b82f6', '#6366f1', '#8b5cf6', '#d946ef', '#f43f5e', '#64748b', '#0f172a',
         '#ffb703', '#fb8500', '#023047', '#219ebc', '#8ecae6', '#dda15e', '#bc6c25'
     ];
+
+    const totalItemsCount = cardItems.length;
+    const autoEqualPercent = totalItemsCount > 0 ? (100 / totalItemsCount).toFixed(1) + '%' : '0%';
 
     return (
         <SafeAreaView style={styles.safeArea}>
@@ -132,7 +143,7 @@ export default function CreateCustomScreen({ navigation, route }: Props) {
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                 >
-                    {/* 1. วงกลมรูปไอคอนการ์ดด้านบน */}
+                    {/* Avatar / Icon */}
                     <View style={styles.avatarContainer}>
                         <View style={[styles.glassAvatarCircle, { borderColor: selectedColor }]}>
                             <TouchableOpacity style={styles.cameraButton} activeOpacity={0.8}>
@@ -141,7 +152,7 @@ export default function CreateCustomScreen({ navigation, route }: Props) {
                         </View>
                     </View>
 
-                    {/* 2. ช่องกรอก Name */}
+                    {/* Name */}
                     <View style={[styles.inputGroup, styles.glassCard]}>
                         <Text style={styles.inputLabel}>Name</Text>
                         <View style={styles.glassInputContainer}>
@@ -155,7 +166,7 @@ export default function CreateCustomScreen({ navigation, route }: Props) {
                         </View>
                     </View>
 
-                    {/* 3. เลือกสีการ์ด */}
+                    {/* Card Color */}
                     <View style={[styles.inputGroup, styles.glassCard]}>
                         <Text style={styles.inputLabel}>Card Color</Text>
                         <View style={styles.colorPaletteRow}>
@@ -193,9 +204,9 @@ export default function CreateCustomScreen({ navigation, route }: Props) {
                         </View>
                     </View>
 
-                    {/* 4. Gacha Rate Mode */}
+                    {/* Gacha Weight Mode */}
                     <View style={[styles.inputGroup, styles.glassCard]}>
-                        <Text style={styles.inputLabel}>Gacha Rate</Text>
+                        <Text style={styles.inputLabel}>Weight Mode</Text>
                         <View style={styles.rateToggleRow}>
                             <TouchableOpacity
                                 style={[styles.rateButton, isEqualRate && styles.rateButtonActive]}
@@ -215,7 +226,7 @@ export default function CreateCustomScreen({ navigation, route }: Props) {
                         </View>
                     </View>
 
-                    {/* 5. Animation (ขยายขนาดกล่องให้ใหญ่ขึ้นเล็กน้อย และจัดให้อยู่ตรงกลางชิดกันพอดี) */}
+                    {/* Animation */}
                     <View style={[styles.inputGroup, styles.glassCard]}>
                         <Text style={styles.inputLabel}>Animation</Text>
                         <View style={styles.animationRow}>
@@ -233,7 +244,7 @@ export default function CreateCustomScreen({ navigation, route }: Props) {
                         </View>
                     </View>
 
-                    {/* 6. Random List */}
+                    {/* Random List */}
                     <View style={[styles.inputGroup, styles.glassCard]}>
                         <View style={styles.randomListHeader}>
                             <Text style={styles.listTitle}>Random List</Text>
@@ -245,60 +256,74 @@ export default function CreateCustomScreen({ navigation, route }: Props) {
                         {cardItems.length === 0 ? (
                             <Text style={styles.emptyListText}>No items yet. Tap '+' to add a random item.</Text>
                         ) : (
-                            cardItems.map((item, index) => (
-                                <View key={index} style={styles.randomListRow}>
-                                    <View style={styles.glassElementInput}>
-                                        <TextInput
-                                            style={styles.smallTextInput}
-                                            placeholder="Element"
-                                            placeholderTextColor="#9ca3af"
-                                            value={item.name}
-                                            onChangeText={(text) => handleItemNameChange(text, index)}
-                                        />
-                                    </View>
-                                    
-                                    <View style={[
-                                        styles.glassRateContainer,
-                                        isEqualRate && styles.disabledRateInput
-                                    ]}>
-                                        {isEqualRate ? (
-                                            <Text style={[styles.rateValueText, { color: '#9ca3af', width: '100%', textAlign: 'center' }]}>
-                                                Auto
-                                            </Text>
-                                        ) : (
+                            cardItems.map((item, index) => {
+                                let computedPercent = '0%';
+                                if (isEqualRate) {
+                                    computedPercent = autoEqualPercent;
+                                } else if (totalWeight > 0) {
+                                    const w = parseFloat(item.weight) || 0;
+                                    computedPercent = ((w / totalWeight) * 100).toFixed(1) + '%';
+                                }
+
+                                return (
+                                    <View key={index} style={styles.randomListRow}>
+                                        <View style={styles.glassElementInput}>
                                             <TextInput
-                                                style={styles.rateTextInput}
-                                                keyboardType="decimal-pad"
-                                                value={item.rate}
-                                                onChangeText={(text) => handleRateTextChange(text, index)}
-                                                placeholder="1"
+                                                style={styles.smallTextInput}
+                                                placeholder="Element name"
                                                 placeholderTextColor="#9ca3af"
+                                                value={item.name}
+                                                onChangeText={(text) => handleItemNameChange(text, index)}
                                             />
-                                        )}
+                                        </View>
                                         
-                                        {!isEqualRate && (
-                                            <View style={styles.stepperContainer}>
-                                                <TouchableOpacity 
-                                                    onPress={() => handleRateAdjust(index, 0.1)}
-                                                    style={styles.stepperButton}
-                                                >
-                                                    <Text style={styles.stepperArrow}>▲</Text>
-                                                </TouchableOpacity>
-                                                <TouchableOpacity 
-                                                    onPress={() => handleRateAdjust(index, -0.1)}
-                                                    style={styles.stepperButton}
-                                                >
-                                                    <Text style={styles.stepperArrow}>▼</Text>
-                                                </TouchableOpacity>
-                                            </View>
-                                        )}
+                                        <View style={[
+                                            styles.glassRateContainer,
+                                            isEqualRate && styles.disabledRateInput
+                                        ]}>
+                                            {isEqualRate ? (
+                                                <View style={styles.equalWeightWrapper}>
+                                                    <Text style={styles.weightValueText}>1</Text>
+                                                    <Text style={styles.percentIndicatorText}>({computedPercent})</Text>
+                                                </View>
+                                            ) : (
+                                                <View style={styles.customRateInputWrapper}>
+                                                    <TextInput
+                                                        style={styles.rateTextInput}
+                                                        keyboardType="decimal-pad"
+                                                        value={item.weight}
+                                                        onChangeText={(text) => handleWeightTextChange(text, index)}
+                                                        placeholder="1.0"
+                                                        placeholderTextColor="#9ca3af"
+                                                    />
+                                                    <Text style={styles.percentIndicatorText}>({computedPercent})</Text>
+                                                </View>
+                                            )}
+                                            
+                                            {!isEqualRate && (
+                                                <View style={styles.stepperContainer}>
+                                                    <TouchableOpacity 
+                                                        onPress={() => handleWeightAdjust(index, 0.1)}
+                                                        style={styles.stepperButton}
+                                                    >
+                                                        <Text style={styles.stepperArrow}>▲</Text>
+                                                    </TouchableOpacity>
+                                                    <TouchableOpacity 
+                                                        onPress={() => handleWeightAdjust(index, -0.1)}
+                                                        style={styles.stepperButton}
+                                                    >
+                                                        <Text style={styles.stepperArrow}>▼</Text>
+                                                    </TouchableOpacity>
+                                                </View>
+                                            )}
+                                        </View>
                                     </View>
-                                </View>
-                            ))
+                                );
+                            })
                         )}
                     </View>
 
-                    {/* 7. Save Button */}
+                    {/* Save Button */}
                     <TouchableOpacity
                         style={styles.saveButton}
                         onPress={handleSave}
@@ -309,7 +334,7 @@ export default function CreateCustomScreen({ navigation, route }: Props) {
                 </ScrollView>
             </KeyboardAvoidingView>
 
-            {/* Modal เลือกสีแบบ Color Picker */}
+            {/* Color Modal */}
             {isColorModalVisible && (
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContainer}>
@@ -461,12 +486,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderWidth: 1,
         borderColor: '#d1d5db',
+        paddingHorizontal: 8,
     },
     rateButtonActive: { backgroundColor: '#ffffff', borderColor: '#00e65c', borderWidth: 1.5 },
-    rateButtonText: { fontSize: 14, fontWeight: '600', color: '#6b7280' },
+    rateButtonText: { fontSize: 13, fontWeight: '600', color: '#6b7280', textAlign: 'center' },
     rateTextActive: { color: '#000000', fontWeight: '700' },
     
-    // ขยายขนาดกล่อง Animation ให้ใหญ่ขึ้นเป็น 86x86 และปรับ gap ให้ชิดกันพอดี
     animationRow: { 
         flexDirection: 'row', 
         justifyContent: 'center', 
@@ -496,19 +521,19 @@ const styles = StyleSheet.create({
     listTitle: { fontSize: 16, fontWeight: '700', color: '#000000' },
     addListPlus: { fontSize: 24, fontWeight: '700', color: '#00e65c' },
     emptyListText: { textAlign: 'center', color: '#9ca3af', fontSize: 13, marginVertical: 12 },
-    randomListRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
+    randomListRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
     glassElementInput: {
-        flex: 2,
+        flex: 1.9,
         backgroundColor: '#ffffff',
         borderRadius: 20,
         borderWidth: 1,
         borderColor: '#d1d5db',
-        paddingHorizontal: 14,
+        paddingHorizontal: 12,
         height: 42,
         justifyContent: 'center',
     },
     glassRateContainer: {
-        flex: 1,
+        flex: 0.75,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -521,11 +546,26 @@ const styles = StyleSheet.create({
     },
     disabledRateInput: { backgroundColor: '#f3f4f6', borderColor: '#e5e7eb' },
     smallTextInput: { flex: 1, fontSize: 13, color: '#111827' },
-    rateTextInput: { flex: 1, fontSize: 13, fontWeight: '600', color: '#111827', padding: 0 },
-    rateValueText: { fontSize: 13, fontWeight: '600', color: '#111827' },
+    equalWeightWrapper: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingRight: 4,
+    },
+    customRateInputWrapper: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingRight: 4,
+    },
+    rateTextInput: { width: 30, fontSize: 11, fontWeight: '600', color: '#111827', padding: 0 },
+    weightValueText: { fontSize: 11, fontWeight: '600', color: '#4b5563' },
+    percentIndicatorText: { fontSize: 9.5, color: '#059669', fontWeight: '700' },
     stepperContainer: { flexDirection: 'column', justifyContent: 'center', paddingLeft: 4 },
     stepperButton: { paddingHorizontal: 2, height: 16, justifyContent: 'center', alignItems: 'center' },
-    stepperArrow: { fontSize: 9, color: '#4b5563', fontWeight: 'bold' },
+    stepperArrow: { fontSize: 8, color: '#4b5563', fontWeight: 'bold' },
     saveButton: {
         width: '100%',
         height: 48,
