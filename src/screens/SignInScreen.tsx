@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  SafeAreaView, //$$SafeAreaView
+  SafeAreaView,
   View,
   Text,
   TextInput,
@@ -12,46 +12,44 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  StatusBar,
+  Dimensions,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../../App'; // path ตามจริงของ App.tsx เทียบกับไฟล์นี้
+import type { RootStackParamList } from '../../App';
 import { signInWithGoogle } from '../services/googleAuth';
 import {
   loginWithGoogleIdToken,
   loginWithEmailPassword,
 } from '../services/authApi';
 
-// ผูก type ของ navigation prop กับ Stack ที่ประกาศใน App.tsx (route ปัจจุบันคือ "SignIn")
 type Props = NativeStackScreenProps<RootStackParamList, 'SignIn'>;
 
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
 export default function SignInScreen({ navigation }: Props) {
-  //ส่วนเก็บข้อมูลผู้ใช้
-  const [Email, setEmail] = useState(''); //พวก set เป็น function ตั้งชื่อให้ตรงกับ field "Email" ใน table User (backend)
-  const [Password, setPassword] = useState(''); //ตั้งชื่อให้ตรงกับ field "Password" ใน table User (backend)
+  const [Email, setEmail] = useState('');
+  const [Password, setPassword] = useState('');
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isEmailLoading, setIsEmailLoading] = useState(false);
 
   const handleSignIn = async () => {
     if (isEmailLoading) return;
 
-    // 0. เช็คว่ากรอกครบก่อนยิง API
     if (!Email.trim() || !Password.trim()) {
-      Alert.alert('แจ้งเตือน', 'กรุณากรอกอีเมลและรหัสผ่านให้ครบ');
+      Alert.alert('Notice', 'Please enter both email and password.');
       return;
     }
 
     setIsEmailLoading(true);
 
     try {
-      // 1. ส่ง Email/Password ไป Backend เพื่อล็อกอินจริง
       const backendResult = await loginWithEmailPassword(Email.trim(), Password);
 
       console.log('Backend login success:', backendResult);
 
-      // 2. แจ้งผู้ใช้ให้รู้ชัดเจนว่าล็อกอินสำเร็จจริง ก่อนพาไปหน้าถัดไป
-      Alert.alert('เข้าสู่ระบบสำเร็จ', 'ยินดีต้อนรับกลับมา!');
+      Alert.alert('Success', 'Welcome back!');
 
-      // 3. เข้าแอปเมื่อ Backend login สำเร็จจริง (ไปหน้า WelcomeHome ก่อนแล้วค่อยต่อ Home)
       navigation.replace('WelcomeHome', {
         username:
           (backendResult.user?.username as string | undefined) ??
@@ -61,9 +59,9 @@ export default function SignInScreen({ navigation }: Props) {
       });
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'เข้าสู่ระบบไม่สำเร็จ';
+        error instanceof Error ? error.message : 'Sign In Failed';
 
-      Alert.alert('เข้าสู่ระบบไม่สำเร็จ', message);
+      Alert.alert('Sign In Failed', message);
     } finally {
       setIsEmailLoading(false);
     }
@@ -74,7 +72,7 @@ export default function SignInScreen({ navigation }: Props) {
   };
 
   const handleCreateAccount = () => {
-    navigation.navigate('SignUp'); // เชื่อม path จริงตามที่ประกาศไว้ใน App.tsx
+    navigation.navigate('SignUpScreen01');
   };
 
   const handleGoogleSignIn = async () => {
@@ -83,19 +81,16 @@ export default function SignInScreen({ navigation }: Props) {
     setIsGoogleLoading(true);
 
     try {
-      // 1. Google Sign-In
       const result = await signInWithGoogle();
 
       if (!result) {
         return;
       }
 
-      // 2. ส่ง Firebase ID Token ไป Backend
       const backendResult = await loginWithGoogleIdToken(result.idToken);
 
       console.log('Backend login success:', backendResult);
 
-      // 3. เข้าแอปเมื่อ Backend login สำเร็จจริง
       navigation.replace('WelcomeHome', {
         username:
           backendResult.user?.username?.toString() ??
@@ -110,19 +105,22 @@ export default function SignInScreen({ navigation }: Props) {
           ? error.message
           : 'เข้าสู่ระบบด้วย Google ไม่สำเร็จ';
 
-      Alert.alert('เข้าสู่ระบบไม่สำเร็จ', message);
+      Alert.alert('Sign In Failed', message);
     } finally {
       setIsGoogleLoading(false);
     }
   };
 
   const handleGuestContinue = () => {
-    console.log('Continue as guest');
+    // นำทางไปยังหน้า Home ในฐานะ Guest Mode
+    navigation.replace('Home', {
+      username: undefined,
+    });
   };
 
   return (
-    //SafeArea เพื่อเว้นระยะขอบบน-ล่าง และกล้อง
     <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" translucent={false} />
       <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -137,93 +135,99 @@ export default function SignInScreen({ navigation }: Props) {
             <Text style={styles.brandTitleBottom}> Addict</Text>
           </View>
 
-          {/* หัวข้อ Login */}
-          <Text style={styles.loginHeading}>Login</Text>
+          {/* กรอบกลางแบบ Glassmorphism Card */}
+          <View style={styles.glassCard}>
+            <Text style={styles.loginHeading}>Login</Text>
 
-          {/* ส่วนฟอร์มกรอกข้อมูล */}
-          <View style={styles.formContainer}>
-            {/* ช่องกรอก Email */}
-            <TextInput
-              style={styles.input}
-              placeholder="Email"
-              placeholderTextColor="#9ca3af"
-              value={Email}
-              onChangeText={setEmail}
-              keyboardType="email-address" //แป้นพิมพ์บนมือถือจะแสดงปุ่ม @ และ .com ขึ้นมาทันที
-              autoCapitalize="none" //ปิดการแปลงอักษรตัวแรกเป็นตัวพิมพ์ใหญ่โดยอัตโนมัติ ซึ่งเหมาะกับ Email และ Password
-              autoCorrect={false}
-            />
+            <View style={styles.formContainer}>
+              {/* ช่องกรอก Email */}
+              <View style={styles.inputWrapper}>
+                <Text style={styles.inputLabel}>Email</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email"
+                  placeholderTextColor="#9ca3af"
+                  value={Email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
 
-            {/* ช่องกรอก Password */}
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              placeholderTextColor="#9ca3af"
-              value={Password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-            />
+              {/* ช่องกรอก Password */}
+              <View style={styles.inputWrapper}>
+                <Text style={styles.inputLabel}>Password</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password"
+                  placeholderTextColor="#9ca3af"
+                  value={Password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  autoCapitalize="none"
+                />
+              </View>
 
-            {/* ลิงก์ Forgot your password? */}
+              {/* ลิงก์ช่วยเหลือ (Forgot & Create Account) */}
+              <View style={styles.linksRow}>
+                <TouchableOpacity
+                  onPress={handleForgotPassword}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.linkText}>Forgot your password?</Text>
+                </TouchableOpacity>
+                <Text style={styles.linkDot}> • </Text>
+                <TouchableOpacity
+                  onPress={handleCreateAccount}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.linkText}>Create your account</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* เส้นคั่น divider or Sign up with */}
+            <View style={styles.dividerContainer}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or Sign up with</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* ปุ่ม Sign in with Google */}
             <TouchableOpacity
-              style={styles.forgotButton}
-              onPress={handleForgotPassword}
+              style={styles.socialButton}
+              onPress={handleGoogleSignIn}
               activeOpacity={0.7}
+              disabled={isGoogleLoading}
             >
-              <Text style={styles.forgotText}>Forgot your password?</Text>
-            </TouchableOpacity>
-
-            {/* ปุ่ม Sign In */}
-            <TouchableOpacity
-              style={styles.signInButton}
-              onPress={handleSignIn}
-              activeOpacity={0.8}
-              disabled={isEmailLoading}
-            >
-              {isEmailLoading ? (
-                <ActivityIndicator size="small" color="#4b5563" />
+              {isGoogleLoading ? (
+                <ActivityIndicator
+                  size="small"
+                  color="#4b5563"
+                  style={styles.googleIcon}
+                />
               ) : (
-                <Text style={styles.signInButtonText}>Sign In</Text>
+                <Image
+                  source={require('../assets/google-logo.webp')}
+                  style={styles.googleIcon}
+                  resizeMode="contain"
+                />
               )}
             </TouchableOpacity>
-
-            {/* ลิงก์ Create your account */}
-            <TouchableOpacity
-              style={styles.createAccountButton}
-              onPress={handleCreateAccount}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.createAccountText}>Create your account</Text>
-            </TouchableOpacity>
           </View>
 
-          {/* เส้นคั่น divider or Sign in with */}
-          <View style={styles.dividerContainer}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or Sign in with</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* ปุ่ม Sign in with Google */}
+          {/* ปุ่ม Sign In นอกกรอบ */}
           <TouchableOpacity
-            style={styles.socialButton}
-            onPress={handleGoogleSignIn}
-            activeOpacity={0.7}
-            disabled={isGoogleLoading}
+            style={styles.signInButton}
+            onPress={handleSignIn}
+            activeOpacity={0.8}
+            disabled={isEmailLoading}
           >
-            {isGoogleLoading ? (
-              <ActivityIndicator
-                size="small"
-                color="#4b5563"
-                style={styles.googleIcon}
-              />
+            {isEmailLoading ? (
+              <ActivityIndicator size="small" color="#ffffff" />
             ) : (
-              <Image
-                source={require('../assets/google-logo.webp')}
-                style={styles.googleIcon}
-                resizeMode="contain"
-              />
+              <Text style={styles.signInButtonText}>Sign In</Text>
             )}
           </TouchableOpacity>
 
@@ -234,8 +238,8 @@ export default function SignInScreen({ navigation }: Props) {
               onPress={handleGuestContinue}
               activeOpacity={0.7}
             >
-              <Text style={styles.guestText}>Continue as a guest</Text>
-              <Text style={styles.guestArrow}>›</Text>
+              <Text style={styles.guestText}>Continue as a Guest</Text>
+              <Text style={styles.guestArrow}>→</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -248,6 +252,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#ffffff',
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) + 8 : 0,
   },
   keyboardAvoidingView: {
     flex: 1,
@@ -255,134 +260,156 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     alignItems: 'center',
-    paddingHorizontal: 36,
-    paddingTop: 36,
-    paddingBottom: 24,
+    paddingHorizontal: 24,
+    paddingTop: SCREEN_HEIGHT * 0.05,
+    paddingBottom: 36,
   },
-  // Typography โลโก้แอปที่ตัวหนังสือเยื้องกัน
   brandContainer: {
     alignSelf: 'center',
-    marginBottom: 28,
+    marginBottom: 20,
   },
   brandTitleTop: {
-    fontSize: 40,
+    fontSize: 36,
     fontWeight: '900',
     color: '#000000',
     letterSpacing: -0.5,
   },
   brandTitleBottom: {
-    fontSize: 34,
+    fontSize: 30,
     fontWeight: '900',
     color: '#000000',
     letterSpacing: -0.5,
-    marginLeft: 68,
+    marginLeft: 58,
     marginTop: -8,
   },
-  // หัวข้อ Login
-  loginHeading: {
-    fontSize: 26,
-    fontWeight: '500',
-    color: '#000000',
-    marginBottom: 28,
+  glassCard: {
+    width: '100%',
+    backgroundColor: 'rgba(240, 242, 245, 0.9)',
+    borderRadius: 24,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.7)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 4,
+    marginBottom: 24,
   },
-  // Container ของฟอร์ม
+  loginHeading: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#00e65c',
+    marginBottom: 20,
+  },
   formContainer: {
     width: '100%',
-    alignItems: 'center',
+  },
+  inputWrapper: {
+    width: '100%',
+    marginBottom: 14,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#000000',
+    marginBottom: 6,
+    paddingLeft: 4,
   },
   input: {
     width: '100%',
     height: 48,
-    borderWidth: 1.2,
-    borderColor: '#6b7280',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    fontSize: 15,
-    color: '#111827',
-    marginBottom: 14,
     backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#9ca3af',
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    fontSize: 14,
+    color: '#111827',
   },
-  forgotButton: {
-    alignSelf: 'flex-start',
-    marginTop: -6,
-    marginBottom: 20,
-    paddingLeft: 4,
+  linksRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+    marginBottom: 4,
   },
-  forgotText: {
-    fontSize: 12,
+  linkText: {
+    fontSize: 11,
     color: '#9ca3af',
     textDecorationLine: 'underline',
   },
-  // ปุ่ม Sign In ทรงรีมน (Capsule shape)
-  signInButton: {
-    width: 140,
-    height: 42,
-    backgroundColor: '#d1d5db',
-    borderRadius: 21,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 14,
+  linkDot: {
+    fontSize: 11,
+    color: '#9ca3af',
   },
-  signInButtonText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#4b5563',
-  },
-  createAccountButton: {
-    paddingVertical: 4,
-  },
-  createAccountText: {
-    fontSize: 12,
-    color: '#6b7280',
-    textDecorationLine: 'underline',
-  },
-  // เส้น Divider
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    marginTop: 28,
-    marginBottom: 24,
+    marginTop: 10,
+    marginBottom: 16,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: '#d1d5db',
   },
   dividerText: {
     paddingHorizontal: 12,
     fontSize: 12,
     color: '#9ca3af',
   },
-  // โลโก้ Google
   socialButton: {
-    padding: 8,
-    marginBottom: 32,
+    padding: 6,
   },
   googleIcon: {
-    width: 44,
-    height: 44,
+    width: 38,
+    height: 38,
   },
-  // Continue as a guest อยู่ชิดล่าง
+  signInButton: {
+    width: '60%',
+    height: 48,
+    backgroundColor: '#00e65c',
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    shadowColor: '#00e65c',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  signInButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
   guestContainer: {
-    marginTop: 'auto',
-    alignSelf: 'flex-end',
-    paddingTop: 20,
+    alignSelf: 'center',
   },
   guestButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#9ca3af',
+    borderRadius: 24,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    backgroundColor: 'transparent',
   },
   guestText: {
-    fontSize: 16,
-    color: '#9ca3af',
-    fontWeight: '500',
+    fontSize: 14,
+    color: '#6b7280',
+    fontWeight: '600',
     marginRight: 6,
   },
   guestArrow: {
-    fontSize: 22,
+    fontSize: 16,
     color: '#6b7280',
     fontWeight: '600',
-    lineHeight: 24,
   },
 });

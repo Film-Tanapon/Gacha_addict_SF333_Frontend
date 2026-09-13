@@ -73,8 +73,12 @@ export default function HomeScreen({ navigation, route }: Props) {
             {/* วงกลมตกแต่งมุมซ้ายล่าง */}
             <View style={styles.decorativeCircle} />
 
-            {/* ปุ่มบวกสีเขียว Floating Button */}
-            <TouchableOpacity style={styles.floatingButton} activeOpacity={0.8}>
+            {/* ปุ่มบวกสีเขียว Floating Button (กดแล้วไปหน้า CreateCustom พร้อมส่ง username ไปด้วย) */}
+            <TouchableOpacity
+                style={styles.floatingButton}
+                activeOpacity={0.8}
+                onPress={() => navigation.navigate('CreateCustom', { username: username })}
+            >
                 <Text style={styles.floatingButtonText}>+</Text>
             </TouchableOpacity>
 
