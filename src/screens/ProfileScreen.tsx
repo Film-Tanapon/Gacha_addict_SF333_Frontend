@@ -1,18 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
-  SafeAreaView,
   View,
   Text,
   Image,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Platform,
-  StatusBar,
   Alert,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
+import BottomTabBar from '../components/BottomTabBar';
+import CoinBadge from '../components/CoinBadge';
+import DecorativeBlob from '../components/DecorativeBlob';
+import { BOTTOM_NAV_HEIGHT, colors } from '../theme/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, any>;
 
@@ -27,6 +29,7 @@ interface MissionItem {
 }
 
 export default function ProfileScreen({ navigation, route }: Props) {
+  const insets = useSafeAreaInsets();
   // รับข้อมูลผู้ใช้ (ถ้าไม่มี username ถือว่าเป็น Guest Mode)
   const {
     username,
@@ -101,26 +104,20 @@ export default function ProfileScreen({ navigation, route }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" translucent={false} />
-
-      {/* แบ็คกราวด์ตกแต่งสีฟ้ามุมล่างซ้ายตาม Figma */}
-      <View style={styles.backgroundBlob} />
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
 
       {/* Header Profile Title & Coin Badge */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Profile</Text>
 
-        <View style={styles.coinBadge}>
-          <View style={styles.coinIconWrapper}>
-            <Text style={styles.coinIcon}>🪙</Text>
-          </View>
-          <Text style={styles.coinText}>{isGuest ? '-' : coin}</Text>
-        </View>
+        <CoinBadge amount={coin} onPress={() => navigation.navigate('ThemeShop')} />
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: BOTTOM_NAV_HEIGHT + insets.bottom + 34 },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {/* กล่อง Profile Card ด้านบน */}
@@ -245,38 +242,13 @@ export default function ProfileScreen({ navigation, route }: Props) {
         )}
       </ScrollView>
 
-      {/* Bottom Navigation Bar */}
-      <View style={styles.bottomBar}>
-        <TouchableOpacity
-          style={styles.bottomNavItem}
-          onPress={() => navigation.navigate('Home')}
-        >
-          <Text style={styles.bottomNavIcon}>⌂</Text>
-        </TouchableOpacity>
+      <DecorativeBlob />
 
-        <TouchableOpacity style={styles.bottomNavItem}>
-          <Text style={styles.bottomNavIcon}>♡</Text>
-        </TouchableOpacity>
-
-        {/* ปุ่มบวกตรงกลาง */}
-        <View style={styles.centerFabAnchor}>
-          <TouchableOpacity
-            style={styles.centerFabButton}
-            activeOpacity={0.85}
-            onPress={() => navigation.navigate('CreateCustom', { username })}
-          >
-            <Text style={styles.centerFabPlus}>+</Text>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity style={styles.bottomNavItem}>
-          <Text style={styles.bottomNavIcon}>🕒</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.bottomNavItem}>
-          <Text style={[styles.bottomNavIcon, styles.bottomNavIconActive]}>👤</Text>
-        </TouchableOpacity>
-      </View>
+      <BottomTabBar
+        active="Profile"
+        onNavigate={tab => navigation.replace(tab, { username } as any)}
+        onAddPress={() => navigation.navigate('GachaForm', {})}
+      />
     </SafeAreaView>
   );
 }
@@ -284,19 +256,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#ffffff',
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) + 8 : 0,
-  },
-  backgroundBlob: {
-    position: 'absolute',
-    bottom: 50,
-    left: -40,
-    width: 220,
-    height: 240,
-    borderRadius: 110,
-    backgroundColor: '#C5D3F2',
-    opacity: 0.6,
-    zIndex: -1,
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -310,30 +270,6 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '800',
     color: '#111827',
-  },
-  coinBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E5E7EB',
-    borderRadius: 20,
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  coinIconWrapper: {
-    marginRight: 6,
-  },
-  coinIcon: {
-    fontSize: 16,
-  },
-  coinText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#374151',
   },
   scrollContent: {
     paddingHorizontal: 24,
@@ -514,10 +450,15 @@ const styles = StyleSheet.create({
 
   // --- Lock Overlay (Guest Mode) ---
   lockOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
     backgroundColor: 'rgba(245, 247, 250, 0.65)',
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 5,
   },
   padlockIconWrapper: {
     marginBottom: 12,
@@ -561,57 +502,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#111827',
-  },
-
-  // --- Bottom Navigation Bar ---
-  bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 70,
-    backgroundColor: '#E5E7EB',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 12,
-  },
-  bottomNavItem: {
-    padding: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bottomNavIcon: {
-    fontSize: 24,
-    color: '#6B7280',
-  },
-  bottomNavIconActive: {
-    color: '#111827',
-  },
-  centerFabAnchor: {
-    top: -20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  centerFabButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#10E759',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#10E759',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  centerFabPlus: {
-    fontSize: 32,
-    color: '#ffffff',
-    lineHeight: 34,
-    fontWeight: '300',
   },
 });

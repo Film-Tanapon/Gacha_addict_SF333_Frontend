@@ -1,365 +1,339 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
-    SafeAreaView,
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    Modal,
-    Switch,
-    ScrollView,
-    Dimensions,
+  Animated,
+  Dimensions,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
+import { colors, radius, cardShadow, glassCard, BOTTOM_NAV_HEIGHT } from '../theme/theme';
+import CoinBadge from '../components/CoinBadge';
+import BottomTabBar from '../components/BottomTabBar';
+import DecorativeBlob from '../components/DecorativeBlob';
+import { getCoins, getGachas } from '../data/mockStore';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
-const { width } = Dimensions.get('window');
-const DRAWER_WIDTH = width * 0.78;
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CENTER_CARD_WIDTH = 230;
+const CENTER_CARD_HEIGHT = 310;
+const CARD_GAP = 18;
+
+// ภาพประกอบหลักจาก Home page ใน Figma
+const FIGMA_GACHA_ART =
+  'https://www.figma.com/api/mcp/asset/a47a4121-f6e3-4557-92b5-073db75bd734.png';
 
 export default function HomeScreen({ navigation, route }: Props) {
-    // รับ username ที่ส่งต่อมาจาก WelcomeHome (ถ้าไม่มีให้เป็น null หรือ undefined)
-    const username = (route.params as any)?.username || null;
-    const isGuest = !username;
+  const username = (route.params as any)?.username ?? null;
+  const insets = useSafeAreaInsets();
+  const [coins] = useState(getCoins());
+  const gachas = getGachas();
+  const scrollX = useRef(new Animated.Value(0)).current;
 
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [isDarkMode, setIsDarkMode] = useState(false);
+  const carouselItems =
+    gachas.length > 0
+      ? gachas.slice(0, 5)
+      : [{ id: 'fallback', name: 'Gacha', emoji: '🎴' } as any];
 
-    const toggleMenu = () => setIsMenuOpen((prev) => !prev);
+  const horizontalInset = Math.max((SCREEN_WIDTH - CENTER_CARD_WIDTH) / 2, 24);
 
-    const handleLoginPress = () => {
-        setIsMenuOpen(false);
-        navigation.navigate('SignIn');
-    };
-
-    const handleLogoutPress = () => {
-        setIsMenuOpen(false);
-        // เคลียร์ Param หรือ Reset กลับไปหน้า SignIn
-        navigation.reset({
-            index: 0,
-            routes: [{ name: 'SignIn' }],
-        });
-    };
-
-    return (
-        <SafeAreaView style={styles.safeArea}>
-            {/* Header / แถบเมนูด้านบน */}
-            <View style={styles.topBar}>
-                <TouchableOpacity onPress={toggleMenu} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                    <Text style={styles.hamburgerIcon}>☰</Text>
-                </TouchableOpacity>
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <View style={styles.screen}>
+        <ScrollView
+          style={styles.contentLayer}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: BOTTOM_NAV_HEIGHT + insets.bottom + 34 },
+          ]}
+        >
+          <View style={styles.header}>
+            <View style={styles.greeting}>
+              <Text style={styles.greetingTitle}>Hello!</Text>
+              <Text style={styles.greetingSubtitle}>To Our Gacha Addict!</Text>
             </View>
+            <CoinBadge
+              amount={coins}
+              onPress={() => navigation.navigate('ThemeShop')}
+            />
+          </View>
 
-            {/* เนื้อหาหน้า Home */}
-            <ScrollView contentContainerStyle={styles.contentContainer}>
-                <View style={styles.greetingContainer}>
-                    <Text style={styles.greetingTitle}>Hello!</Text>
-                    <Text style={styles.greetingSubtitle}>To Our Gacha Addict!</Text>
-                </View>
+          <Animated.ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            decelerationRate="fast"
+            snapToInterval={CENTER_CARD_WIDTH + CARD_GAP}
+            snapToAlignment="center"
+            contentContainerStyle={[
+              styles.carouselContent,
+              { paddingHorizontal: horizontalInset },
+            ]}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+              { useNativeDriver: true },
+            )}
+            scrollEventThrottle={16}
+          >
+            {carouselItems.map((g, index) => {
+              const inputRange = [
+                (index - 1) * (CENTER_CARD_WIDTH + CARD_GAP),
+                index * (CENTER_CARD_WIDTH + CARD_GAP),
+                (index + 1) * (CENTER_CARD_WIDTH + CARD_GAP),
+              ];
 
-                <Text style={styles.sectionTitle}>Recommended</Text>
+              const scale = scrollX.interpolate({
+                inputRange,
+                outputRange: [0.82, 1, 0.82],
+                extrapolate: 'clamp',
+              });
 
-                {/* การ์ด Recommended ตัวอย่าง */}
-                <View style={styles.cardRow}>
-                    <View style={styles.cardPlaceholder} />
-                    <View style={styles.cardPlaceholder} />
-                </View>
-                <View style={styles.cardRow}>
-                    <View style={styles.cardPlaceholder} />
-                </View>
-            </ScrollView>
-
-            {/* วงกลมตกแต่งมุมซ้ายล่าง */}
-            <View style={styles.decorativeCircle} />
-
-            {/* ปุ่มบวกสีเขียว Floating Button (กดแล้วไปหน้า CreateCustom พร้อมส่ง username ไปด้วย) */}
-            <TouchableOpacity
-                style={styles.floatingButton}
-                activeOpacity={0.8}
-                onPress={() => navigation.navigate('CreateCustom', { username: username })}
-            >
-                <Text style={styles.floatingButtonText}>+</Text>
-            </TouchableOpacity>
-
-            {/* Side Drawer Modal */}
-            <Modal
-                visible={isMenuOpen}
-                transparent
-                animationType="fade"
-                onRequestClose={toggleMenu}
-            >
-                <View style={styles.modalOverlay}>
-                    {/* พื้นที่โปร่งแสงสำหรับกดปิด Drawer */}
-                    <TouchableOpacity
-                        style={styles.backdropTouch}
-                        activeOpacity={1}
-                        onPress={toggleMenu}
-                    />
-
-                    {/* กล่องเมนูด้านข้าง (Drawer Content) */}
-                    <View style={styles.drawerContainer}>
-                        {/* Profile Header */}
-                        <View style={styles.drawerProfileHeader}>
-                            <View style={styles.avatarCircle}>
-                                <Text style={styles.avatarIcon}>👤</Text>
-                            </View>
-                            <Text style={styles.profileName} numberOfLines={1}>
-                                {isGuest ? 'Guest Mode' : username}
-                            </Text>
-                        </View>
-
-                        {/* เมนูหลักส่วนบน */}
-                        <View style={styles.drawerBody}>
-                            {/* แสดงปุ่ม Login เฉพาะ Guest Mode */}
-                            {isGuest && (
-                                <TouchableOpacity style={styles.menuItem} onPress={handleLoginPress}>
-                                    <Text style={styles.menuIcon}>➔]</Text>
-                                    <Text style={styles.menuText}>Login</Text>
-                                </TouchableOpacity>
-                            )}
-
-                            {/* History */}
-                            <TouchableOpacity style={styles.menuItem}>
-                                <Text style={styles.menuIcon}>🕒</Text>
-                                <Text style={styles.menuText}>History</Text>
-                            </TouchableOpacity>
-
-                            {/* Dark Mode Toggle */}
-                            <View style={[styles.menuItem, styles.switchRow]}>
-                                <View style={styles.menuLeft}>
-                                    <Text style={styles.menuIcon}>🌙</Text>
-                                    <Text style={styles.menuText}>Dark Mode</Text>
-                                </View>
-                                <Switch
-                                    value={isDarkMode}
-                                    onValueChange={setIsDarkMode}
-                                    trackColor={{ false: '#d1d5db', true: '#111827' }}
-                                    thumbColor={isDarkMode ? '#ffffff' : '#111827'}
-                                />
-                            </View>
-                        </View>
-
-                        {/* เมนูส่วนล่าง */}
-                        <View style={styles.drawerFooter}>
-                            {/* Help Center */}
-                            <TouchableOpacity style={styles.menuItem}>
-                                <Text style={styles.menuIcon}>ⓘ</Text>
-                                <Text style={styles.menuText}>Help Center</Text>
-                            </TouchableOpacity>
-
-                            {/* Clear All Data */}
-                            <TouchableOpacity style={styles.menuItem}>
-                                <Text style={[styles.menuIcon, styles.dangerText]}>🧹</Text>
-                                <Text style={[styles.menuText, styles.dangerText]}>Clear All Data</Text>
-                            </TouchableOpacity>
-
-                            {/* แสดงปุ่ม Log out เฉพาะเมื่อล็อกอินแล้ว */}
-                            {!isGuest && (
-                                <View style={styles.logoutWrapper}>
-                                    <TouchableOpacity style={styles.menuItem} onPress={handleLogoutPress}>
-                                        <Text style={styles.menuIcon}>➔]</Text>
-                                        <Text style={styles.menuText}>Log out</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            )}
-                        </View>
+              return (
+                <TouchableOpacity
+                  key={g.id}
+                  activeOpacity={0.9}
+                  onPress={() =>
+                    g.id !== 'fallback' &&
+                    navigation.navigate('GachaDetail', { gachaId: g.id })
+                  }
+                >
+                  <Animated.View
+                    style={[
+                      styles.carouselCard,
+                      { transform: [{ scale }] },
+                    ]}
+                  >
+                    {g.bannerUri ? (
+                      <Image
+                        source={{ uri: g.bannerUri }}
+                        style={styles.carouselImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <Image
+                        source={{ uri: FIGMA_GACHA_ART }}
+                        style={styles.carouselImage}
+                        resizeMode="cover"
+                      />
+                    )}
+                    <View style={styles.carouselOverlay}>
+                      <Text style={styles.carouselTitle} numberOfLines={1}>
+                        {g.name}
+                      </Text>
                     </View>
+                  </Animated.View>
+                </TouchableOpacity>
+              );
+            })}
+          </Animated.ScrollView>
+
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Custom</Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('CustomGacha')}
+              hitSlop={10}
+            >
+              <Text style={styles.moreLink}>More &gt;</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.customRow}
+          >
+            {gachas.map(g => (
+              <TouchableOpacity
+                key={g.id}
+                activeOpacity={0.88}
+                style={styles.customCard}
+                onPress={() =>
+                  navigation.navigate('GachaDetail', { gachaId: g.id })
+                }
+              >
+                <View
+                  style={[
+                    styles.customImageWrap,
+                    !g.bannerUri && styles.customEmptyWrap,
+                  ]}
+                >
+                  {g.bannerUri ? (
+                    <Image
+                      source={{ uri: g.bannerUri }}
+                      style={styles.customImage}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <Text style={styles.customName} numberOfLines={2}>
+                      {g.name}
+                    </Text>
+                  )}
                 </View>
-            </Modal>
-        </SafeAreaView>
-    );
+                {g.bannerUri ? (
+                  <View style={styles.customNameWrap}>
+                    <Text style={styles.customName} numberOfLines={2}>
+                      {g.name}
+                    </Text>
+                  </View>
+                ) : null}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </ScrollView>
+
+        <DecorativeBlob />
+
+        <BottomTabBar
+          active="Home"
+          onNavigate={tab => navigation.replace(tab, { username } as any)}
+          onAddPress={() => navigation.navigate('GachaForm', {})}
+        />
+      </View>
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-    safeArea: {
-        flex: 1,
-        backgroundColor: '#ffffff',
-    },
-    topBar: {
-        paddingHorizontal: 20,
-        paddingTop: 8,
-        paddingBottom: 4,
-    },
-    hamburgerIcon: {
-        fontSize: 26,
-        color: '#111827',
-    },
-    contentContainer: {
-        paddingHorizontal: 24,
-        paddingTop: 16,
-        paddingBottom: 80,
-    },
-    greetingContainer: {
-        marginBottom: 20,
-    },
-    greetingTitle: {
-        fontSize: 32,
-        fontWeight: '800',
-        color: '#111827',
-        marginBottom: 4,
-    },
-    greetingSubtitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#1f2937',
-    },
-    sectionTitle: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: '#374151',
-        marginBottom: 16,
-    },
-    cardRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between', // กระจายซ้าย-ขวาให้เต็มพื้นที่
-        gap: 20,                         // ระยะห่างระหว่างการ์ดสองใบ
-        marginBottom: 20,
-    },
-    cardPlaceholder: {
-        flex: 1,                         // ขยายขนาดให้เต็มสัดส่วนซ้าย-ขวาเท่ากัน
-        aspectRatio: 0.82,               // สัดส่วนความกว้างต่อความสูงตามแบบใน Figma (หรือตั้ง height: 180)
-        backgroundColor: '#d1d5db',
-        borderRadius: 22,                // ขอบโค้งมนตามแบบ
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  screen: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  contentLayer: { zIndex: 1 },
+  scrollContent: {
+    paddingTop: 12,
+  },
+  header: {
+    minHeight: 82,
+    paddingHorizontal: 19,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  greeting: {
+    flex: 1,
+  },
+  greetingTitle: {
+    fontSize: 40,
+    lineHeight: 48,
+    fontWeight: '800',
+    color: colors.text,
+    letterSpacing: -0.8,
+  },
+  greetingSubtitle: {
+    marginTop: 0,
+    fontSize: 25,
+    lineHeight: 31,
+    fontWeight: '400',
+    color: colors.text,
+  },
+  carouselContent: {
+    alignItems: 'center',
+    paddingTop: 22,
+    paddingBottom: 42,
+    gap: CARD_GAP,
+  },
+  carouselCard: {
+    width: CENTER_CARD_WIDTH,
+    height: CENTER_CARD_HEIGHT,
+    borderRadius: radius.md,
+    backgroundColor: '#ffffff',
+    overflow: 'hidden',
+    ...cardShadow,
+  },
+  carouselImage: {
+    width: '100%',
+    height: '100%',
+  },
+  carouselOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    minHeight: 48,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    justifyContent: 'flex-end',
+  },
+  carouselTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  sectionHeader: {
+    paddingHorizontal: 19,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  sectionTitle: {
+    fontSize: 25,
+    lineHeight: 31,
+    fontWeight: '400',
+    color: colors.text,
+  },
+  moreLink: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  customRow: {
+    paddingHorizontal: 25,
+    paddingTop: 0,
+    paddingBottom: 8,
+    gap: 28,
+  },
+  customCard: {
+    width: 167,
+    height: 210,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    ...glassCard,
+  },
+  customImageWrap: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 45,
 
-        // ใส่เงาเบาๆ ตามตัวอย่างใน Figma
-        elevation: 3,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.12,
-        shadowRadius: 5,
-    },
-    cardPlaceholderSingle: {
-        flex: 0,
-        width: '47.5%',                  // ให้กว้างเท่ากับใบเดี่ยว ไม่ยืดเต็มหน้าจอ
-        aspectRatio: 0.82,
-        backgroundColor: '#d1d5db',
-        borderRadius: 22,
-        elevation: 3,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.12,
-        shadowRadius: 5,
-    },
-    decorativeCircle: {
-        position: 'absolute',
-        bottom: -60,
-        left: -60,
-        width: 200,
-        height: 200,
-        borderRadius: 100,
-        backgroundColor: '#93c5fd',
-        opacity: 0.8,
-        zIndex: -1,
-    },
-    floatingButton: {
-        position: 'absolute',
-        bottom: 24,
-        right: 20,
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: '#22c55e',
-        justifyContent: 'center',
-        alignItems: 'center',
-        elevation: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 3,
-    },
-    floatingButtonText: {
-        fontSize: 32,
-        color: '#ffffff',
-        lineHeight: 34,
-        fontWeight: '400',
-    },
-
-    // Drawer Styles
-    modalOverlay: {
-        flex: 1,
-        flexDirection: 'row',
-        backgroundColor: 'rgba(0, 0, 0, 0.35)',
-    },
-    backdropTouch: {
-        flex: 1,
-    },
-    drawerContainer: {
-        position: 'absolute',
-        left: 0,
-        top: 0,
-        bottom: 0,
-        width: DRAWER_WIDTH,
-        backgroundColor: '#ffffff',
-        paddingVertical: 20,
-        display: 'flex',
-        flexDirection: 'column',
-    },
-    drawerProfileHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingBottom: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e5e7eb',
-    },
-    avatarCircle: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        borderWidth: 1.5,
-        borderColor: '#9ca3af',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 14,
-    },
-    avatarIcon: {
-        fontSize: 22,
-    },
-    profileName: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#111827',
-        flex: 1,
-    },
-    drawerBody: {
-        flex: 1,
-        paddingTop: 16,
-    },
-    menuItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 14,
-        paddingHorizontal: 24,
-    },
-    menuLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    switchRow: {
-        justifyContent: 'space-between',
-    },
-    menuIcon: {
-        fontSize: 18,
-        width: 30,
-        color: '#111827',
-    },
-    menuText: {
-        fontSize: 16,
-        color: '#111827',
-        fontWeight: '500',
-    },
-    drawerFooter: {
-        paddingBottom: 8,
-    },
-    dangerText: {
-        color: '#ef4444',
-        fontWeight: '700',
-    },
-    logoutWrapper: {
-        borderTopWidth: 1,
-        borderTopColor: '#e5e7eb',
-        marginTop: 8,
-        paddingTop: 4,
-    },
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+  },
+  customImage: {
+    width: 112,
+    height: 112,
+    aspectRatio: 1,
+  },
+  customNameWrap: {
+    position: 'absolute',
+    left: 10,
+    right: 10,
+    bottom: 7,
+    minHeight: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0)',
+  },
+  customEmptyWrap: {
+    bottom: 0,
+  },
+  customName: {
+    textAlign: 'center',
+    fontSize: 24,
+    lineHeight: 28,
+    fontWeight: '400',
+    color: colors.text,
+  },
 });
