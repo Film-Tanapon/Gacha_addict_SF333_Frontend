@@ -85,8 +85,12 @@ export default function ProfileScreen({ navigation, route }: Props) {
 
   const handleProfilePress = () => {
     if (isGuest) return;
-    // นำทางไปหน้าแก้ไข Profile (เมื่อทำหน้า EditProfileScreen แล้วสามารถใส่ navigation.navigate('EditProfile') ได้)
-    Alert.alert('Edit Profile', 'Navigate to Edit Profile Screen');
+    navigation.navigate('EditProfile', {
+      username,
+      profileImage,
+      frameColor,
+      coin,
+    });
   };
 
   const handleSignInToUnlock = () => {
@@ -124,6 +128,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
         <TouchableOpacity
           style={styles.profileCard}
           activeOpacity={isGuest ? 1 : 0.8}
+          disabled={isGuest}
           onPress={handleProfilePress}
         >
           <View
@@ -161,7 +166,14 @@ export default function ProfileScreen({ navigation, route }: Props) {
               <Text style={styles.trophyIcon}>🏆</Text>
               <Text style={styles.infoIcon}>ⓘ</Text>
             </View>
-            <Text style={styles.shopBagIcon}>🛍️</Text>
+            <TouchableOpacity
+              style={styles.shopButton}
+              onPress={() => navigation.navigate('ThemeShop', { username, coin })}
+              accessibilityRole="button"
+              accessibilityLabel="Open shop"
+            >
+              <Text style={styles.shopBagIcon}>🛍️</Text>
+            </TouchableOpacity>
           </View>
           <Text style={styles.missionSubtitle}>
             ({missions.filter((m) => m.claimed).length}/{missions.length})
@@ -362,6 +374,13 @@ const styles = StyleSheet.create({
   },
   shopBagIcon: {
     fontSize: 18,
+  },
+  shopButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: -10,
   },
   missionSubtitle: {
     fontSize: 12,

@@ -14,15 +14,17 @@ import {
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
+import { createId, getGachaById, upsertGacha } from '../data/mockStore';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateCustom'>;
 
 export default function CreateCustomScreen({ navigation, route }: Props) {
     const params = route?.params || {};
     const username = (params as any)?.username || null;
+    const editingGacha = params.gachaId ? getGachaById(params.gachaId) : null;
 
-    const [title, setTitle] = useState('');
-    const [cardImage, setCardImage] = useState<string | null>(null);
+    const [title, setTitle] = useState(editingGacha?.name ?? '');
+    const [cardImage, setCardImage] = useState<string | null>(editingGacha?.bannerUri ?? null);
     const [isEqualRate, setIsEqualRate] = useState<boolean>(true);
     const [animation, setAnimation] = useState<string>('anim1');
     const [frameId, setFrameId] = useState<string | null>(null);
@@ -33,7 +35,9 @@ export default function CreateCustomScreen({ navigation, route }: Props) {
     const [isColorModalVisible, setIsColorModalVisible] = useState(false);
     const [pickerColor, setPickerColor] = useState('#3b82f6');
 
-    const [cardItems, setCardItems] = useState<{ name: string; weight: string }[]>([]);
+    const [cardItems, setCardItems] = useState<{ name: string; weight: string }[]>(
+        editingGacha?.randomList.map(item => ({ name: item.element, weight: item.rate.replace('%', '') })) ?? []
+    );
 
     const handleAddItem = () => {
         setCardItems([...cardItems, { name: '', weight: '1' }]);
@@ -108,8 +112,24 @@ export default function CreateCustomScreen({ navigation, route }: Props) {
             Items: formattedItems, 
         };
 
+        upsertGacha({
+            id: editingGacha?.id ?? createId('gacha'),
+            name: title.trim(),
+            category: editingGacha?.category ?? 'Custom',
+            bannerUri: cardImage,
+            emoji: editingGacha?.emoji ?? '🎴',
+            pullOneCost: editingGacha?.pullOneCost ?? 1,
+            pullManyCount: editingGacha?.pullManyCount ?? 5,
+            pullManyCost: editingGacha?.pullManyCost ?? 5,
+            randomList: formattedItems.map(item => ({
+                id: createId('item'),
+                element: item.name,
+                rate: `${item.rate}%`,
+            })),
+            isFavorite: editingGacha?.isFavorite ?? false,
+        });
         console.log('Saving Custom Gacha Data:', newCardData);
-        Alert.alert('Success', 'Custom Gacha created successfully!');
+        Alert.alert('Success', editingGacha ? 'Gacha updated successfully!' : 'Custom Gacha created successfully!');
         navigation.goBack();
     };
 
@@ -135,7 +155,7 @@ export default function CreateCustomScreen({ navigation, route }: Props) {
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} activeOpacity={0.7}>
                         <Text style={styles.backIcon}>&lt;</Text>
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Create Custom Gacha</Text>
+                    <Text style={styles.headerTitle}>{editingGacha ? 'Edit Gacha' : 'Create Custom Gacha'}</Text>
                     <View style={{ width: 32 }} />
                 </View>
 
@@ -513,7 +533,7 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     selectedAnimationBox: { 
-        borderColor: '#00e65c', 
+        borderColor: '#00e65c',
         borderWidth: 2.5 
     },
 

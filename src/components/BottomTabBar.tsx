@@ -1,7 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BOTTOM_NAV_HEIGHT, colors } from '../theme/theme';
+import Svg, { Circle, Path } from 'react-native-svg';
+import { BOTTOM_NAV_HEIGHT } from '../theme/theme';
 
 export type TabKey = 'Home' | 'Favorite' | 'History' | 'Profile';
 
@@ -11,9 +12,9 @@ type Props = {
   onAddPress: () => void;
 };
 
-const TABS: { key: TabKey; icon?: string }[] = [
-  { key: 'Home', icon: '⌂' },
-  { key: 'Favorite', icon: '♡' },
+const TABS: { key: TabKey }[] = [
+  { key: 'Home' },
+  { key: 'Favorite' },
   { key: 'History' },
   { key: 'Profile' },
 ];
@@ -74,17 +75,58 @@ function TabItem({
           <View style={[styles.historyHourHand, active && styles.iconFillActive]} />
           <View style={[styles.historyMinuteHand, active && styles.iconFillActive]} />
         </View>
-      ) : tab.key === 'Profile' ? (
-        <View style={styles.profileIcon}>
-          <View style={[styles.profileHead, active && styles.iconBorderActive]} />
-          <View style={[styles.profileBody, active && styles.iconBorderActive]} />
-        </View>
       ) : (
         <View style={styles.iconBox}>
-          <Text style={[styles.icon, active && styles.iconActive]}>{tab.icon}</Text>
+          <NavigationIcon type={tab.key} active={active} />
         </View>
       )}
     </TouchableOpacity>
+  );
+}
+
+function NavigationIcon({ type, active }: { type: Exclude<TabKey, 'History'>; active: boolean }) {
+  const stroke = active ? '#000000' : '#777777';
+
+  return (
+    <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
+      {type === 'Home' ? (
+        <>
+          <Path
+            d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"
+            stroke={stroke}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <Path
+            d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
+            stroke={stroke}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </>
+      ) : type === 'Favorite' ? (
+        <Path
+          d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"
+          stroke={stroke}
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ) : (
+        <>
+          <Circle cx={12} cy={8} r={5} stroke={stroke} strokeWidth={2} />
+          <Path
+            d="M20 21a8 8 0 0 0-16 0"
+            stroke={stroke}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </>
+      )}
+    </Svg>
   );
 }
 
@@ -126,8 +168,6 @@ const styles = StyleSheet.create({
   },
   centerSpacer: { width: 70 },
   iconBox: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
-  icon: { fontSize: 34, lineHeight: 36, color: '#777777', textAlign: 'center' },
-  iconActive: { color: '#000000' },
   iconBorderActive: { borderColor: '#000000' },
   iconFillActive: { backgroundColor: '#000000' },
   historyIcon: {
@@ -157,32 +197,13 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '25deg' }],
     transformOrigin: 'left center',
   },
-  profileIcon: { width: 30, height: 34, alignItems: 'center' },
-  profileHead: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2.2,
-    borderColor: '#777777',
-  },
-  profileBody: {
-    position: 'absolute',
-    bottom: 0,
-    width: 24,
-    height: 14,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-    borderWidth: 2.2,
-    borderBottomWidth: 0,
-    borderColor: '#777777',
-  },
   addButton: {
     position: 'absolute',
     bottom: BOTTOM_NAV_HEIGHT - 11,
     width: 70,
     height: 70,
     borderRadius: 35,
-    backgroundColor: colors.primary,
+    backgroundColor: '#36FF4A',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000000',

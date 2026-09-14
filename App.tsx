@@ -15,6 +15,11 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import FavoriteScreen from './src/screens/FavoriteScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import CustomGachaScreen from './src/screens/CustomGachaScreen';
+import GachaDetailScreen from './src/screens/GachaDetailScreen';
+import GachaPullScreen from './src/screens/GachaPullScreen';
+import GachaResultScreen from './src/screens/GachaResultScreen';
+import ShopScreen from './src/screens/ShopScreen';
+import EditProfileScreen from './src/screens/EditProfileScreen';
 import { configureGoogleSignIn } from './src/services/googleAuth';
 
 // 2. ประกาศ Route และ Param ของแต่ละหน้า
@@ -40,15 +45,17 @@ export type RootStackParamList = {
   };
   WelcomeHome: { username?: string; mode?: 'login' | 'signup' };
   Home: { username?: string; coin?: number } | undefined;
-  CreateCustom: { username?: string | null } | undefined;
+  CreateCustom: { username?: string | null; gachaId?: string } | undefined;
   Favorite: { username?: string } | undefined;
   History: { username?: string } | undefined;
-  Profile: { username?: string } | undefined;
+  Profile: { username?: string; profileImage?: string; frameColor?: string; coin?: number } | undefined;
+  EditProfile: { username: string; profileImage?: string; frameColor?: string; coin?: number };
   CustomGacha: undefined;
   GachaDetail: { gachaId: string };
-  GachaResult: { gachaId: string; resultElement: string };
+  GachaPull: { gachaId: string; pullCount?: number };
+  GachaResult: { gachaId: string; resultElements: string[] };
   GachaForm: { gachaId?: string };
-  ThemeShop: undefined;
+  ThemeShop: { username?: string; coin?: number } | undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -77,9 +84,14 @@ export default function App() {
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="CreateCustom" component={CreateCustomScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="EditProfile" component={EditProfileScreen} />
         <Stack.Screen name="Favorite" component={FavoriteScreen} />
         <Stack.Screen name="History" component={HistoryScreen} />
         <Stack.Screen name="CustomGacha" component={CustomGachaScreen} />
+        <Stack.Screen name="GachaDetail" component={GachaDetailScreen} />
+        <Stack.Screen name="GachaPull" component={GachaPullScreen} />
+        <Stack.Screen name="GachaResult" component={GachaResultScreen} />
+        <Stack.Screen name="ThemeShop" component={ShopScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
