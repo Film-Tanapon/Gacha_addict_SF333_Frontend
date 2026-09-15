@@ -15,12 +15,12 @@ export default function WelcomeHome({ navigation, route }: Props) {
     useEffect(() => {
         // ตั้งเวลา 2.5 วินาที แล้วพาไปหน้า Home อัตโนมัติ
         const timer = setTimeout(() => {
-            navigation.replace('Home');
+            navigation.replace('Home', { username });
         }, 2500);
 
         // คืนค่าฟังก์ชันเพื่อเคลียร์ Timer กรณีที่ Component ถูก unmount ก่อนเวลา
         return () => clearTimeout(timer);
-    }, [navigation]);
+    }, [navigation, username]);
 
     return (
         <View style={styles.container}>

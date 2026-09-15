@@ -11,10 +11,13 @@ import {
     Platform,
     ScrollView,
     Alert,
+    ActivityIndicator,
     StatusBar,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
+import { signInWithGoogle } from '../services/googleAuth';
+import { loginWithGoogleIdToken } from '../services/authApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, any>;
 
@@ -24,6 +27,7 @@ export default function SignUpScreen02({ navigation, route }: Props) {
 
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
+    const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
     const handleContinue = () => {
         if (!username.trim() || !email.trim()) {
@@ -47,8 +51,34 @@ export default function SignUpScreen02({ navigation, route }: Props) {
         });
     };
 
-    const handleGoogleSignUp = () => {
-        console.log('Sign up with Google');
+    const handleGoogleSignUp = async () => {
+        if (isGoogleLoading) return;
+
+        setIsGoogleLoading(true);
+        try {
+            const result = await signInWithGoogle();
+            if (!result) return;
+
+            const backendResult = await loginWithGoogleIdToken(result.idToken);
+            const googleUsername =
+                backendResult.user?.username?.toString() ??
+                result.firebaseUser.displayName ??
+                result.firebaseUser.email ??
+                'User';
+
+            navigation.replace('WelcomeHome', {
+                username: googleUsername,
+                mode: 'signup',
+            });
+        } catch (error) {
+            const message =
+                error instanceof Error
+                    ? error.message
+                    : 'สมัครสมาชิกด้วย Google ไม่สำเร็จ';
+            Alert.alert('Google Sign Up Failed', message);
+        } finally {
+            setIsGoogleLoading(false);
+        }
     };
 
     return (
@@ -134,12 +164,17 @@ export default function SignUpScreen02({ navigation, route }: Props) {
                                 style={styles.googleButton}
                                 onPress={handleGoogleSignUp}
                                 activeOpacity={0.7}
+                                disabled={isGoogleLoading}
                             >
-                                <Image
-                                    source={require('../assets/google-logo.webp')}
-                                    style={styles.googleIcon}
-                                    resizeMode="contain"
-                                />
+                                {isGoogleLoading ? (
+                                    <ActivityIndicator color="#4285F4" />
+                                ) : (
+                                    <Image
+                                        source={require('../assets/google-logo.webp')}
+                                        style={styles.googleIcon}
+                                        resizeMode="contain"
+                                    />
+                                )}
                             </TouchableOpacity>
                         </View>
                     </View>

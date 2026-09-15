@@ -15,6 +15,9 @@ import BottomTabBar from '../components/BottomTabBar';
 import CoinBadge from '../components/CoinBadge';
 import DecorativeBlob from '../components/DecorativeBlob';
 import { BOTTOM_NAV_HEIGHT, colors } from '../theme/theme';
+import { getAuth } from '@react-native-firebase/auth';
+import { signOutGoogle } from '../services/googleAuth';
+import { clearStoredToken } from '../services/authApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, any>;
 
@@ -39,7 +42,10 @@ export default function ProfileScreen({ navigation, route }: Props) {
     coin: initialCoin = 20,
   } = (route.params as any) ?? {};
 
-  const isGuest = !username;
+  const firebaseUser = getAuth().currentUser;
+  const resolvedUsername =
+    username ?? firebaseUser?.displayName ?? firebaseUser?.email ?? undefined;
+  const isGuest = !resolvedUsername;
 
   const [coin, setCoin] = useState<number>(initialCoin);
   const [missions, setMissions] = useState<MissionItem[]>([
@@ -84,9 +90,9 @@ export default function ProfileScreen({ navigation, route }: Props) {
   };
 
   const handleProfilePress = () => {
-    if (isGuest) return;
+    if (!resolvedUsername) return;
     navigation.navigate('EditProfile', {
-      username,
+      username: resolvedUsername,
       profileImage,
       frameColor,
       coin,
@@ -100,7 +106,8 @@ export default function ProfileScreen({ navigation, route }: Props) {
     });
   };
 
-  const handleLogOut = () => {
+  const handleLogOut = async () => {
+    await Promise.allSettled([signOutGoogle(), clearStoredToken()]);
     navigation.reset({
       index: 0,
       routes: [{ name: 'SignIn' }],
@@ -114,7 +121,10 @@ export default function ProfileScreen({ navigation, route }: Props) {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Profile</Text>
 
-        <CoinBadge amount={coin} onPress={() => navigation.navigate('ThemeShop')} />
+        <CoinBadge
+          amount={coin}
+          onPress={() => navigation.navigate('ThemeShop', { username: resolvedUsername, coin })}
+        />
       </View>
 
       <ScrollView
@@ -154,7 +164,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
           </View>
 
           <Text style={styles.usernameText} numberOfLines={1}>
-            {isGuest ? 'Guest' : username}
+            {isGuest ? 'Guest' : resolvedUsername}
           </Text>
         </TouchableOpacity>
 
@@ -168,7 +178,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
             </View>
             <TouchableOpacity
               style={styles.shopButton}
-              onPress={() => navigation.navigate('ThemeShop', { username, coin })}
+              onPress={() => navigation.navigate('ThemeShop', { username: resolvedUsername, coin })}
               accessibilityRole="button"
               accessibilityLabel="Open shop"
             >
@@ -258,8 +268,8 @@ export default function ProfileScreen({ navigation, route }: Props) {
 
       <BottomTabBar
         active="Profile"
-        onNavigate={tab => navigation.replace(tab, { username } as any)}
-        onAddPress={() => navigation.navigate('CreateCustom', {})}
+        onNavigate={tab => navigation.replace(tab, { username: resolvedUsername } as any)}
+        onAddPress={() => navigation.navigate('CreateCustom', { username: resolvedUsername })}
       />
     </SafeAreaView>
   );
