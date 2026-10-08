@@ -6,7 +6,7 @@ import type { RootStackParamList } from '../../App';
 import BottomTabBar from '../components/BottomTabBar';
 import DecorativeBlob from '../components/DecorativeBlob';
 import { BOTTOM_NAV_HEIGHT, cardShadow, colors, radius } from '../theme/theme';
-import { getGachaById } from '../data/mockStore';
+import { getGachaById } from '../services/appApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GachaResult'>;
 const RESULT_ART = 'https://www.figma.com/api/mcp/asset/a47a4121-f6e3-4557-92b5-073db75bd734.png';

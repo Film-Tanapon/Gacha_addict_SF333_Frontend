@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Image, View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -7,18 +7,18 @@ import { colors, radius, glassCard, BOTTOM_NAV_HEIGHT } from '../theme/theme';
 import CoinBadge from '../components/CoinBadge';
 import BottomTabBar from '../components/BottomTabBar';
 import DecorativeBlob from '../components/DecorativeBlob';
-import { getCoins, getFavorites, toggleFavorite } from '../data/mockStore';
+import { useAppData, toggleFavorite, showApiError } from '../services/appApi';
 
 // หน้า Favorite: รายการ Gacha ที่บันทึกไว้ + ปุ่มหัวใจสำหรับลบออกจาก Favorite
 type Props = NativeStackScreenProps<RootStackParamList, 'Favorite'>;
 
 export default function FavoriteScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const [favorites, setFavorites] = useState(getFavorites());
+  const { coins, gachas } = useAppData();
+  const favorites = gachas.filter(g => g.isFavorite);
 
   const handleRemove = (id: string) => {
-    toggleFavorite(id);
-    setFavorites(getFavorites());
+    toggleFavorite(id).catch(showApiError);
   };
 
   return (
@@ -33,7 +33,7 @@ export default function FavoriteScreen({ navigation }: Props) {
       >
         <View style={styles.header}>
           <Text style={styles.title}>Favorite</Text>
-          <CoinBadge amount={getCoins()} />
+          <CoinBadge amount={coins} />
         </View>
 
         {favorites.length === 0 ? (

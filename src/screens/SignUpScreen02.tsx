@@ -83,7 +83,7 @@ export default function SignUpScreen02({ navigation, route }: Props) {
 
     return (
         <SafeAreaView style={styles.safeArea}>
-            <StatusBar barStyle="dark-content" backgroundColor="#ffffff" translucent={false} />
+            <StatusBar barStyle="dark-content" />
             <KeyboardAvoidingView
                 style={styles.keyboardAvoidingView}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}

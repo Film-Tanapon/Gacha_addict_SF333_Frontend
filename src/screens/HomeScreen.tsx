@@ -1,4 +1,5 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useIsFocused } from '@react-navigation/native';
 import {
   Animated,
   Dimensions,
@@ -9,14 +10,23 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
-import { colors, radius, cardShadow, glassCard, BOTTOM_NAV_HEIGHT } from '../theme/theme';
+import {
+  colors,
+  radius,
+  cardShadow,
+  glassCard,
+  BOTTOM_NAV_HEIGHT,
+} from '../theme/theme';
 import CoinBadge from '../components/CoinBadge';
 import BottomTabBar from '../components/BottomTabBar';
 import DecorativeBlob from '../components/DecorativeBlob';
-import { getCoins, getGachas } from '../data/mockStore';
+import { useAppData } from '../services/appApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -29,17 +39,57 @@ const CARD_GAP = 18;
 const FIGMA_GACHA_ART =
   'https://www.figma.com/api/mcp/asset/a47a4121-f6e3-4557-92b5-073db75bd734.png';
 
-export default function HomeScreen({ navigation, route }: Props) {
-  const username = (route.params as any)?.username ?? null;
+export default function HomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const [coins] = useState(getCoins());
-  const gachas = getGachas();
+  const { coins, gachas, user } = useAppData();
+  const username = user?.username;
+  const welcomeName = username ?? 'Guest';
+  const isFocused = useIsFocused();
+  const [typedName, setTypedName] = useState('');
+  const [cursorVisible, setCursorVisible] = useState(true);
+  const [nameComplete, setNameComplete] = useState(false);
+
+  useEffect(() => {
+    setTypedName('');
+    setCursorVisible(true);
+    setNameComplete(false);
+    if (!isFocused) return;
+    // Keep Thai vowels, tone marks and Unicode surrogate pairs with their character.
+    const characters: string[] = [];
+    for (const character of Array.from(welcomeName)) {
+      if (characters.length && /[\u0300-\u036f\u0e31\u0e34-\u0e3a\u0e47-\u0e4e\ufe0f]/.test(character)) {
+        characters[characters.length - 1] += character;
+      } else {
+        characters.push(character);
+      }
+    }
+    let length = 0;
+    let deleting = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      length += deleting ? -1 : 1;
+      setTypedName(characters.slice(0, length).join(''));
+      setNameComplete(length === characters.length);
+      let delay = deleting ? 65 : 130;
+      if (length === characters.length) {
+        deleting = true;
+        delay = 1800;
+      } else if (length === 0) {
+        deleting = false;
+        delay = 500;
+      }
+      timer = setTimeout(tick, delay);
+    };
+    timer = setTimeout(tick, 350);
+    const cursorTimer = setInterval(() => setCursorVisible(value => !value), 500);
+    return () => {
+      clearTimeout(timer);
+      clearInterval(cursorTimer);
+    };
+  }, [welcomeName, isFocused]);
   const scrollX = useRef(new Animated.Value(0)).current;
 
-  const carouselItems =
-    gachas.length > 0
-      ? gachas.slice(0, 5)
-      : [{ id: 'fallback', name: 'Gacha', emoji: '🎴' } as any];
+  const carouselItems = gachas.length > 0 ? gachas.slice(0, 5) : [];
 
   const horizontalInset = Math.max((SCREEN_WIDTH - CENTER_CARD_WIDTH) / 2, 24);
 
@@ -57,7 +107,15 @@ export default function HomeScreen({ navigation, route }: Props) {
           <View style={styles.header}>
             <View style={styles.greeting}>
               <Text style={styles.greetingTitle}>Hello!</Text>
-              <Text style={styles.greetingSubtitle}>To Our Gacha Addict!</Text>
+              <View accessible accessibilityLabel={`ยินดีต้อนรับคุณ ${welcomeName}`}>
+                {/* Reserve the full greeting's space so typing does not move the carousel. */}
+                <Text accessible={false} style={[styles.greetingSubtitle, { opacity: 0 }]}>
+                  ยินดีต้อนรับคุณ {welcomeName}{'\u00a0'}
+                </Text>
+                <Text accessible={false} style={[styles.greetingSubtitle, { position: 'absolute', top: 0, left: 0, right: 0 }]}>
+                  ยินดีต้อนรับคุณ {typedName}{!nameComplete && cursorVisible ? '_' : '\u00a0'}
+                </Text>
+              </View>
             </View>
             <CoinBadge
               amount={coins}
@@ -104,10 +162,7 @@ export default function HomeScreen({ navigation, route }: Props) {
                   }
                 >
                   <Animated.View
-                    style={[
-                      styles.carouselCard,
-                      { transform: [{ scale }] },
-                    ]}
+                    style={[styles.carouselCard, { transform: [{ scale }] }]}
                   >
                     {g.bannerUri ? (
                       <Image

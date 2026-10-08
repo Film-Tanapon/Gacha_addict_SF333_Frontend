@@ -1,4 +1,17 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  AppState,
+  View,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+} from 'react-native';
+import {
+  initializeAppData,
+  refreshAppData,
+  showApiError,
+} from './src/services/appApi';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
@@ -48,8 +61,20 @@ export type RootStackParamList = {
   CreateCustom: { username?: string | null; gachaId?: string } | undefined;
   Favorite: { username?: string } | undefined;
   History: { username?: string } | undefined;
-  Profile: { username?: string; profileImage?: string; frameColor?: string; coin?: number } | undefined;
-  EditProfile: { username: string; profileImage?: string; frameColor?: string; coin?: number };
+  Profile:
+    | {
+        username?: string;
+        profileImage?: string;
+        frameColor?: string;
+        coin?: number;
+      }
+    | undefined;
+  EditProfile: {
+    username: string;
+    profileImage?: string;
+    frameColor?: string;
+    coin?: number;
+  };
   CustomGacha: undefined;
   GachaDetail: { gachaId: string };
   GachaPull: { gachaId: string; pullCount?: number };
@@ -61,14 +86,71 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
+  const [ready, setReady] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   useEffect(() => {
     configureGoogleSignIn();
+    let active = true;
+    initializeAppData()
+      .then(() => {
+        if (active) setReady(true);
+      })
+      .catch(error => {
+        if (active)
+          setLoadError(
+            error instanceof Error
+              ? error.message
+              : 'Cannot read phone storage.',
+          );
+      });
+    const retry = () => {
+      refreshAppData(['user', 'themes', 'missions']).catch(showApiError);
+    };
+    const subscription = AppState.addEventListener('change', status => {
+      if (status === 'active') retry();
+    });
+    const timer = setInterval(() => {
+      if (AppState.currentState === 'active') retry();
+    }, 30000);
+    return () => {
+      active = false;
+      subscription.remove();
+      clearInterval(timer);
+    };
   }, []);
+  if (!ready && loadError)
+    return (
+      <View style={styles.loading}>
+        <Text>{loadError}</Text>
+        <TouchableOpacity
+          onPress={() => {
+            setLoadError(null);
+            initializeAppData()
+              .then(() => setReady(true))
+              .catch(error =>
+                setLoadError(
+                  error instanceof Error
+                    ? error.message
+                    : 'Cannot read phone storage.',
+                ),
+              );
+          }}
+        >
+          <Text>ลองอ่านข้อมูลอีกครั้ง</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  if (!ready)
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
 
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName="SignIn"
+        initialRouteName="Home"
         screenOptions={{ headerShown: false }}
       >
         <Stack.Screen name="SignIn" component={SignInScreen} />
@@ -96,3 +178,7 @@ export default function App() {
     </NavigationContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+});

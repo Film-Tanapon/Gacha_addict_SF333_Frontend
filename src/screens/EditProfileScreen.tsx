@@ -17,35 +17,34 @@ import CoinBadge from '../components/CoinBadge';
 import DecorativeBlob from '../components/DecorativeBlob';
 import { BOTTOM_NAV_HEIGHT, cardShadow, colors, radius } from '../theme/theme';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'EditProfile'>;
+import { useAppData, updateProfile, selectTheme, selectFrame, showApiError } from '../services/appApi';
 
-const USER_FRAMES = [
-  { id: 'f1', color: '#0080ff' },
-  { id: 'f2', color: '#ff4b82' },
-  { id: 'f3', color: '#eab308' },
-  { id: 'f4', color: '#a855f7' },
-  { id: 'f5', color: '#06b6d4' },
-];
-const USER_THEMES = [
-  { id: 't1', color: '#e0e7ff' },
-  { id: 't2', color: '#f3f4f6' },
-  { id: 't3', color: '#dcfce7' },
-  { id: 't4', color: '#ffedd5' },
-  { id: 't5', color: '#ffe4e6' },
-];
+type Props = NativeStackScreenProps<RootStackParamList, 'EditProfile'>;
 
 export default function EditProfileScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
-  const { username, profileImage, frameColor = '#0080ff', coin = 20 } = route.params;
+  const { user, coins: coin, themes, frames } = useAppData(['themes', 'frames', 'user']);
+  const username = user?.username ?? route.params.username;
+  const profileImage = user?.avatarUrl ?? route.params.profileImage;
+  const frameColor = user?.frameColor ?? route.params.frameColor ?? '#0080ff';
+  const ownedThemes = themes.filter(t => t.owned).map(t => ({ id: t.id, color: t.colorPreview }));
   const [editedUsername, setEditedUsername] = useState(username);
   const [isEditingUsername, setIsEditingUsername] = useState(false);
-  const [selectedFrame, setSelectedFrame] = useState(frameColor);
-  const [selectedTheme, setSelectedTheme] = useState(USER_THEMES[1].id);
+  const [selectedFrame, setSelectedFrame] = useState<string | null>(user?.frameId ?? null);
+  const [selectedTheme, setSelectedTheme] = useState<string | null>(user?.selectedThemeId ?? null);
 
-  const saveProfile = () => {
-    const finalUsername = editedUsername.trim() || username;
-    Alert.alert('Success', 'Profile updated successfully!');
-    navigation.replace('Profile', { username: finalUsername, profileImage, frameColor: selectedFrame, coin });
+  const [saving, setSaving] = useState(false);
+  const saveProfile = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await updateProfile({ username: editedUsername.trim() || username });
+      if (selectedFrame && selectedFrame !== user?.frameId) await selectFrame(selectedFrame);
+      if (selectedTheme && selectedTheme !== user?.selectedThemeId) await selectTheme(selectedTheme);
+      Alert.alert('Success', 'Profile updated successfully!');
+      navigation.goBack();
+    } catch (error) { showApiError(error); }
+    finally { setSaving(false); }
   };
 
   return (
@@ -65,7 +64,7 @@ export default function EditProfileScreen({ navigation, route }: Props) {
       >
         <View style={styles.avatarSection}>
           <TouchableOpacity style={styles.avatarWrapper} activeOpacity={0.85} onPress={() => Alert.alert('Profile picture', 'Image picker will be connected here.')}>
-            <View style={[styles.avatarCircle, { borderColor: selectedFrame }]}>
+            <View style={[styles.avatarCircle, { borderColor: frames.find(f => f.id === selectedFrame)?.color ?? frameColor }]}>
               {profileImage ? (
                 <Image source={{ uri: profileImage }} style={styles.avatarImage} />
               ) : (
@@ -105,20 +104,20 @@ export default function EditProfileScreen({ navigation, route }: Props) {
         <View style={styles.customizerCard}>
           <Text style={styles.sectionTitle}>Frame</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.optionsRow}>
-            {USER_FRAMES.map(item => (
+            {frames.filter(f => f.owned).map(item => (
               <TouchableOpacity
                 key={item.id}
-                style={[styles.optionItem, selectedFrame === item.color && styles.optionSelected]}
-                onPress={() => setSelectedFrame(item.color)}
+                style={[styles.optionItem, selectedFrame === item.id && styles.optionSelected]}
+                onPress={() => setSelectedFrame(item.id)}
               >
-                <View style={[styles.frameOption, { borderColor: item.color }]} />
+                <View style={[styles.frameOption, { borderColor: item.color }]}><Text style={{textAlign:"center",fontSize:24}}>{item.decoration}</Text></View>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
           <Text style={[styles.sectionTitle, styles.themeTitle]}>Theme</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.optionsRow}>
-            {USER_THEMES.map(item => (
+            {ownedThemes.map(item => (
               <TouchableOpacity
                 key={item.id}
                 style={[styles.optionItem, selectedTheme === item.id && styles.optionSelected]}

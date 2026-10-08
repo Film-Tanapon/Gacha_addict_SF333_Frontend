@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -15,7 +14,7 @@ import BottomTabBar from '../components/BottomTabBar';
 import CoinBadge from '../components/CoinBadge';
 import DecorativeBlob from '../components/DecorativeBlob';
 import { BOTTOM_NAV_HEIGHT, colors } from '../theme/theme';
-import { getAuth } from '@react-native-firebase/auth';
+import { useAppData } from '../services/appApi';
 import { signOutGoogle } from '../services/googleAuth';
 import { clearStoredToken } from '../services/authApi';
 
@@ -31,64 +30,18 @@ interface MissionItem {
   claimed: boolean;
 }
 
-export default function ProfileScreen({ navigation, route }: Props) {
+export default function ProfileScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  // รับข้อมูลผู้ใช้ (ถ้าไม่มี username ถือว่าเป็น Guest Mode)
-  const {
-    username,
-    profileImage,
-    frameColor = '#0080ff',
-    frameUrl,
-    coin: initialCoin = 20,
-  } = (route.params as any) ?? {};
-
-  const firebaseUser = getAuth().currentUser;
-  const resolvedUsername =
-    username ?? firebaseUser?.displayName ?? firebaseUser?.email ?? undefined;
-  const isGuest = !resolvedUsername;
-
-  const [coin, setCoin] = useState<number>(initialCoin);
-  const [missions, setMissions] = useState<MissionItem[]>([
-    {
-      id: '1',
-      title: 'Log In',
-      current: 1,
-      total: 1,
-      rewardCoin: 1,
-      completed: true,
-      claimed: true, // ทำสำเร็จแล้ว (มีติ๊กถูกฟ้า)
-    },
-    {
-      id: '2',
-      title: 'Gacha',
-      current: 1,
-      total: 2,
-      rewardCoin: 2,
-      completed: false,
-      claimed: false,
-    },
-    {
-      id: '3',
-      title: 'Gacha',
-      current: 1,
-      total: 10,
-      rewardCoin: 3,
-      completed: false,
-      claimed: false,
-    },
-  ]);
-
-  // ฟังก์ชันเมื่อกดรับรางวัลของ Mission
-  const handleClaimReward = (mission: MissionItem) => {
-    if (!mission.completed || mission.claimed) return;
-
-    setCoin((prev) => prev + mission.rewardCoin);
-    setMissions((prev) =>
-      prev.map((m) => (m.id === mission.id ? { ...m, claimed: true } : m))
-    );
-    Alert.alert('Success', `You received ${mission.rewardCoin} Coins!`);
-  };
-
+  const { user, coins: coin, missions: backendMissions, frames } = useAppData(['user', 'missions', 'frames']);
+  const resolvedUsername = user?.username;
+  const profileImage = user?.avatarUrl ?? undefined;
+  const frameColor = user?.frameColor ?? '#0080ff';
+  const frameUrl = user?.frameUrl ?? undefined;
+  const isGuest = !user;
+  const missions: MissionItem[] = backendMissions.map(m => {
+    const [current, total] = m.progressLabel.split('/').map(Number);
+    return { id: m.id, title: m.title, current, total, rewardCoin: m.coinReward, completed: m.progress >= 1, claimed: m.claimed };
+  });
   const handleProfilePress = () => {
     if (!resolvedUsername) return;
     navigation.navigate('EditProfile', {
@@ -154,6 +107,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
             )}
 
             {/* ถ้ามีกรอบรูปภาพพิเศษจากหลังบ้าน */}
+            {user && frames.find(f=>f.id===user.frameId)?.decoration ? <Text style={{position:'absolute',top:-14,alignSelf:'center',fontSize:30}}>{frames.find(f=>f.id===user.frameId)?.decoration}</Text> : null}
             {frameUrl && (
               <Image
                 source={{ uri: frameUrl }}
@@ -178,6 +132,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
             </View>
             <TouchableOpacity
               style={styles.shopButton}
+              disabled={isGuest}
               onPress={() => navigation.navigate('ThemeShop', { username: resolvedUsername, coin })}
               accessibilityRole="button"
               accessibilityLabel="Open shop"
@@ -186,11 +141,11 @@ export default function ProfileScreen({ navigation, route }: Props) {
             </TouchableOpacity>
           </View>
           <Text style={styles.missionSubtitle}>
-            ({missions.filter((m) => m.claimed).length}/{missions.length})
+            {isGuest ? 'Sign in to view your missions' : `(${missions.filter(m => m.claimed).length}/${missions.length})`}
           </Text>
 
           {/* รายการภารกิจ */}
-          <View style={styles.missionList}>
+          {!isGuest && <View style={styles.missionList}>
             {missions.map((item) => {
               const progressRatio = Math.min(item.current / item.total, 1);
               return (
@@ -217,25 +172,22 @@ export default function ProfileScreen({ navigation, route }: Props) {
                   </View>
 
                   {/* ด้านขวา: เหรียญรางวัล */}
-                  <TouchableOpacity
-                    style={styles.rewardSection}
-                    disabled={isGuest || !item.completed || item.claimed}
-                    onPress={() => handleClaimReward(item)}
-                    activeOpacity={0.7}
-                  >
+                  <View style={styles.rewardSection}>
                     <View style={styles.goldCoinCircle}>
                       <Text style={styles.goldCoinDollar}>$</Text>
                     </View>
                     <Text style={styles.rewardText}>{item.rewardCoin} Coins</Text>
-                  </TouchableOpacity>
+                  </View>
                 </View>
               );
             })}
-          </View>
+          </View>}
 
           {/* Overlay Lock สำหรับ Guest Mode */}
           {isGuest && (
-            <View style={styles.lockOverlay}>
+            <>
+            <View style={styles.lockOverlay} onStartShouldSetResponder={() => true} />
+            <View style={styles.lockContent}>
               <View style={styles.padlockIconWrapper}>
                 <Text style={styles.padlockIcon}>🔒</Text>
               </View>
@@ -248,6 +200,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
                 <Text style={styles.unlockButtonText}>Sign In to Unlock</Text>
               </TouchableOpacity>
             </View>
+            </>
           )}
         </View>
 
@@ -348,7 +301,7 @@ const styles = StyleSheet.create({
 
   // --- Mission Card ---
   missionWrapperCard: {
-    backgroundColor: 'rgba(236, 239, 242, 0.85)',
+    backgroundColor: '#DFE3E8',
     borderRadius: 20,
     padding: 18,
     shadowColor: '#000',
@@ -401,10 +354,13 @@ const styles = StyleSheet.create({
   },
   missionList: {
     gap: 12,
+    borderWidth: 1,
+    borderColor: '#B8C1CC',
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   missionItemCard: {
     backgroundColor: '#DFE3E8',
-    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -480,14 +436,21 @@ const styles = StyleSheet.create({
   // --- Lock Overlay (Guest Mode) ---
   lockOverlay: {
     position: 'absolute',
-    left: 0,
-    right: 0,
     top: 0,
+    right: 0,
     bottom: 0,
+    left: 0,
     backgroundColor: 'rgba(245, 247, 250, 0.65)',
+    borderRadius: 20,
+    zIndex: 1,
+  },
+  lockContent: {
+    position: 'relative',
+    zIndex: 2,
+    paddingVertical: 24,
+    paddingHorizontal: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 5,
   },
   padlockIconWrapper: {
     marginBottom: 12,
@@ -497,6 +460,8 @@ const styles = StyleSheet.create({
   },
   unlockButton: {
     backgroundColor: '#D900FF',
+    minHeight: 44,
+    justifyContent: 'center',
     paddingVertical: 8,
     paddingHorizontal: 22,
     borderRadius: 20,

@@ -21,6 +21,7 @@ import { signInWithGoogle } from '../services/googleAuth';
 import {
   loginWithGoogleIdToken,
   loginWithEmailPassword,
+  clearStoredToken,
 } from '../services/authApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SignIn'>;
@@ -46,14 +47,12 @@ export default function SignInScreen({ navigation }: Props) {
     try {
       const backendResult = await loginWithEmailPassword(Email.trim(), Password);
 
-      console.log('Backend login success:', backendResult);
 
       Alert.alert('Success', 'Welcome back!');
 
       navigation.replace('WelcomeHome', {
         username:
           (backendResult.user?.username as string | undefined) ??
-          (backendResult.user?.Username as string | undefined) ??
           Email,
         mode: 'login',
       });
@@ -89,7 +88,6 @@ export default function SignInScreen({ navigation }: Props) {
 
       const backendResult = await loginWithGoogleIdToken(result.idToken);
 
-      console.log('Backend login success:', backendResult);
 
       navigation.replace('WelcomeHome', {
         username:
@@ -111,7 +109,8 @@ export default function SignInScreen({ navigation }: Props) {
     }
   };
 
-  const handleGuestContinue = () => {
+  const handleGuestContinue = async () => {
+    await clearStoredToken();
     // นำทางไปยังหน้า Home ในฐานะ Guest Mode
     navigation.replace('Home', {
       username: undefined,
@@ -120,7 +119,7 @@ export default function SignInScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" translucent={false} />
+      <StatusBar barStyle="dark-content" />
       <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

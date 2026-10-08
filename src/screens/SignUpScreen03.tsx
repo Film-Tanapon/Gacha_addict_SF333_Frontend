@@ -16,6 +16,8 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
 
+import { registerUser } from '../services/authApi';
+
 type Props = NativeStackScreenProps<RootStackParamList, any>;
 
 export default function SignUpScreen03({ navigation, route }: Props) {
@@ -63,10 +65,8 @@ export default function SignUpScreen03({ navigation, route }: Props) {
                 profileImage,
             };
 
-            console.log('Final Sign Up Payload for Backend:', payload);
+            await registerUser(payload);
 
-            // TODO: เรียกใช้ API สมัครสมาชิกของ Backend ที่นี่
-            // const res = await registerUser(payload);
 
             // เมื่อสมัครสำเร็จ นำทางไปยัง Step 4 (Success Screen)
             navigation.replace('SignUpScreen04', {
@@ -85,7 +85,7 @@ export default function SignUpScreen03({ navigation, route }: Props) {
 
     return (
         <SafeAreaView style={styles.safeArea}>
-            <StatusBar barStyle="dark-content" backgroundColor="#ffffff" translucent={false} />
+            <StatusBar barStyle="dark-content" />
             <KeyboardAvoidingView
                 style={styles.keyboardAvoidingView}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}

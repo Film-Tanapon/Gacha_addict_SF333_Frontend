@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Alert,
   Image,
@@ -14,15 +14,15 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useFocusEffect } from '@react-navigation/native';
 import type { RootStackParamList } from '../../App';
 import BottomTabBar from '../components/BottomTabBar';
 import DecorativeBlob from '../components/DecorativeBlob';
 import { BOTTOM_NAV_HEIGHT, cardShadow, colors, radius } from '../theme/theme';
 import {
-  getGachaById,
+  useAppData,
+  showApiError,
   toggleFavorite,
-} from '../data/mockStore';
+} from '../services/appApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GachaDetail'>;
 
@@ -31,13 +31,11 @@ const DEFAULT_COVER =
 
 export default function GachaDetailScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
-  const [gacha, setGacha] = useState(() => getGachaById(route.params.gachaId));
+  const { gachas, online } = useAppData();
+  const gacha = gachas.find(g => g.id === route.params.gachaId);
   const [pullAmount, setPullAmount] = useState('5');
   const [rateVisible, setRateVisible] = useState(false);
 
-  useFocusEffect(useCallback(() => {
-    setGacha(getGachaById(route.params.gachaId));
-  }, [route.params.gachaId]));
 
   const amount = useMemo(() => {
     const parsed = Number.parseInt(pullAmount, 10);
@@ -58,8 +56,7 @@ export default function GachaDetailScreen({ navigation, route }: Props) {
   }
 
   const handleFavorite = () => {
-    toggleFavorite(gacha.id);
-    setGacha({ ...gacha, isFavorite: !gacha.isFavorite });
+    toggleFavorite(gacha.id).catch(showApiError);
   };
 
   const handlePull = (count: number) => {
@@ -103,7 +100,7 @@ export default function GachaDetailScreen({ navigation, route }: Props) {
             </View>
 
             <View style={styles.coverWrap}>
-              <Image source={{ uri: gacha.bannerUri || DEFAULT_COVER }} style={styles.cover} resizeMode="cover" />
+              {online ? <Image source={{ uri: gacha.bannerUri || DEFAULT_COVER }} style={styles.cover} resizeMode="cover" /> : <View style={styles.cover}><Text style={styles.offlineEmoji}>{gacha.emoji ?? '🎴'}</Text></View>}
               <View style={styles.coverShade} />
               <Text style={styles.bannerLabel}>Banner</Text>
               <TouchableOpacity style={styles.rateButton} onPress={() => setRateVisible(true)} accessibilityLabel="View item rates">
@@ -184,6 +181,7 @@ export default function GachaDetailScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
+  offlineEmoji: { fontSize: 80, textAlign: 'center', marginTop: 35 },
   safeArea: { flex: 1, backgroundColor: colors.background },
   screen: { flex: 1, backgroundColor: colors.background },
   contentLayer: { zIndex: 1 },

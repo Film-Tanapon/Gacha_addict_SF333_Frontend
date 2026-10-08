@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
-import { addHistoryEntry, createId, getGachaById } from '../data/mockStore';
+import { useAppData, pullGacha, showApiError } from '../services/appApi';
 import { absoluteFill, cardShadow, colors, radius } from '../theme/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GachaPull'>;
@@ -27,7 +27,10 @@ const LOOP_START_OFFSET = LOOP_START_INDEX * CARD_INTERVAL;
 const CARD_BACK = 'https://www.figma.com/api/mcp/asset/a47a4121-f6e3-4557-92b5-073db75bd734.png';
 
 export default function GachaPullScreen({ navigation, route }: Props) {
-  const gacha = getGachaById(route.params.gachaId);
+  const { gachas, online } = useAppData();
+  const gacha = gachas.find(g => g.id === route.params.gachaId);
+  const requestBusy = useRef(false);
+  const pendingResults = useRef<string[]>([]);
   const requiredPulls = Math.max(1, route.params.pullCount ?? 1);
   const scrollX = useRef(new Animated.Value(LOOP_START_OFFSET)).current;
   const flip = useRef(new Animated.Value(0)).current;
@@ -40,49 +43,38 @@ export default function GachaPullScreen({ navigation, route }: Props) {
 
   if (!gacha) return null;
 
-  const drawItem = () => {
-    const weighted = gacha.randomList.map(item => ({
-      item,
-      weight: Math.max(Number.parseFloat(item.rate.replace('%', '')) || 0, 0),
-    }));
-    const total = weighted.reduce((sum, entry) => sum + entry.weight, 0);
-    let cursor = Math.random() * total;
-    return weighted.find(entry => (cursor -= entry.weight) <= 0)?.item ?? weighted[weighted.length - 1]?.item;
-  };
-
-  const revealCard = (index: number) => {
-    if (isAnimating || results.length >= requiredPulls) return;
-    const result = drawItem();
-    if (!result) return;
-    const nextResults = [...results, result.element];
-    setSelectedCard(index);
-    setResults(nextResults);
-    setRevealedResult(result.element);
+  const revealCard = async (index: number) => {
+    if (requestBusy.current || isAnimating || results.length >= requiredPulls) return;
+    requestBusy.current = true;
     setIsAnimating(true);
-    flip.setValue(0);
-    addHistoryEntry({
-      id: createId('history'),
-      gachaName: gacha.name,
-      resultElement: result.element,
-      pulledAt: new Date().toLocaleString(),
-    });
-    Animated.timing(flip, { toValue: 1, duration: 420, useNativeDriver: true }).start(() => {
-      setTimeout(() => {
-        if (nextResults.length === requiredPulls) {
-          navigation.replace('GachaResult', {
-            gachaId: gacha.id,
-            resultElements: nextResults,
-          });
-          return;
-        }
-        setSelectedCard(null);
-        setRevealedResult('');
-        flip.setValue(0);
-        scrollX.setValue(LOOP_START_OFFSET);
-        setRoundKey(current => current + 1);
-        setIsAnimating(false);
-      }, 650);
-    });
+    try {
+      if (!pendingResults.current.length) pendingResults.current = await pullGacha(gacha.id, requiredPulls);
+      const result = pendingResults.current[results.length];
+      const nextResults = [...results, result];
+      setSelectedCard(index);
+      setResults(nextResults);
+      setRevealedResult(result);
+      flip.setValue(0);
+      Animated.timing(flip, { toValue: 1, duration: 420, useNativeDriver: true }).start(() => {
+        setTimeout(() => {
+          if (nextResults.length === requiredPulls) {
+            navigation.replace('GachaResult', { gachaId: gacha.id, resultElements: nextResults });
+            return;
+          }
+          setSelectedCard(null);
+          setRevealedResult('');
+          flip.setValue(0);
+          scrollX.setValue(LOOP_START_OFFSET);
+          setRoundKey(current => current + 1);
+          setIsAnimating(false);
+          requestBusy.current = false;
+        }, 650);
+      });
+    } catch (error) {
+      setIsAnimating(false);
+      requestBusy.current = false;
+      showApiError(error);
+    }
   };
 
   const cards = Array.from({ length: LOOP_CARD_COUNT });
@@ -142,7 +134,7 @@ export default function GachaPullScreen({ navigation, route }: Props) {
                   </View>
                 ) : (
                   <>
-                    <Image source={{ uri: gacha.bannerUri || CARD_BACK }} style={styles.cardImage} resizeMode="cover" />
+                    {online && <Image source={{ uri: gacha.bannerUri || CARD_BACK }} style={styles.cardImage} resizeMode="cover" />}
                     <View style={styles.cardTint} />
                     <Text style={styles.cardMark}>?</Text>
                   </>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Image, View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -7,7 +7,7 @@ import { colors, radius, glassCard, BOTTOM_NAV_HEIGHT } from '../theme/theme';
 import CoinBadge from '../components/CoinBadge';
 import BottomTabBar from '../components/BottomTabBar';
 import DecorativeBlob from '../components/DecorativeBlob';
-import { getCoins, getHistory } from '../data/mockStore';
+import { useAppData } from '../services/appApi';
 
 // หน้า History: ประวัติรายการที่เคยสุ่มทั้งหมด
 type Props = NativeStackScreenProps<RootStackParamList, 'History'>;
@@ -17,7 +17,7 @@ const FIGMA_GACHA_ART =
 
 export default function HistoryScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const [history] = useState(getHistory());
+  const { coins, history } = useAppData(['history', 'user']);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -31,7 +31,7 @@ export default function HistoryScreen({ navigation }: Props) {
       >
         <View style={styles.header}>
           <Text style={styles.title}>History</Text>
-          <CoinBadge amount={getCoins()} />
+          <CoinBadge amount={coins} />
         </View>
 
         {history.length === 0 ? (

@@ -14,20 +14,19 @@ import {
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
-import { createId, getGachaById, upsertGacha } from '../data/mockStore';
+import { getGachaById, saveGacha, showApiError } from '../services/appApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateCustom'>;
 
 export default function CreateCustomScreen({ navigation, route }: Props) {
     const params = route?.params || {};
-    const username = (params as any)?.username || null;
     const editingGacha = params.gachaId ? getGachaById(params.gachaId) : null;
 
     const [title, setTitle] = useState(editingGacha?.name ?? '');
-    const [cardImage, setCardImage] = useState<string | null>(editingGacha?.bannerUri ?? null);
-    const [isEqualRate, setIsEqualRate] = useState<boolean>(true);
-    const [animation, setAnimation] = useState<string>('anim1');
-    const [frameId, setFrameId] = useState<string | null>(null);
+    const [cardImage] = useState<string | null>(editingGacha?.bannerUri ?? null);
+    const [isEqualRate, setIsEqualRate] = useState<boolean>(editingGacha?.isEqualRate ?? true);
+    const [animation, setAnimation] = useState<string>(editingGacha?.animation ?? 'anim1');
+    const [frameId] = useState<string | null>(editingGacha?.frameId ?? null);
 
     const [selectedColor, setSelectedColor] = useState('#ff69b4');
     const [customColors, setCustomColors] = useState<string[]>([]);
@@ -79,7 +78,9 @@ export default function CreateCustomScreen({ navigation, route }: Props) {
 
     const totalWeight = cardItems.reduce((sum, item) => sum + (parseFloat(item.weight) || 0), 0);
 
-    const handleSave = () => {
+    const [saving, setSaving] = useState(false);
+    const handleSave = async () => {
+        if (saving) return;
         if (!title.trim()) {
             Alert.alert('Notice', 'Please enter a Gacha Name.');
             return;
@@ -102,35 +103,25 @@ export default function CreateCustomScreen({ navigation, route }: Props) {
                 };
             });
 
-        const newCardData = {
-            Title: title,
-            Card_Image: cardImage,
-            is_equal_rate: isEqualRate ? 1 : 0,
-            Animation: animation,
-            Frame_ID: frameId,
-            Create_by: username, 
-            Items: formattedItems, 
-        };
-
-        upsertGacha({
-            id: editingGacha?.id ?? createId('gacha'),
-            name: title.trim(),
-            category: editingGacha?.category ?? 'Custom',
-            bannerUri: cardImage,
-            emoji: editingGacha?.emoji ?? '🎴',
-            pullOneCost: editingGacha?.pullOneCost ?? 1,
-            pullManyCount: editingGacha?.pullManyCount ?? 5,
-            pullManyCost: editingGacha?.pullManyCost ?? 5,
-            randomList: formattedItems.map(item => ({
-                id: createId('item'),
-                element: item.name,
-                rate: `${item.rate}%`,
-            })),
-            isFavorite: editingGacha?.isFavorite ?? false,
-        });
-        console.log('Saving Custom Gacha Data:', newCardData);
-        Alert.alert('Success', editingGacha ? 'Gacha updated successfully!' : 'Custom Gacha created successfully!');
-        navigation.goBack();
+        if (!formattedItems.length || formattedItems.length > 100) {
+            Alert.alert('Notice', 'Provide between 1 and 100 named items.');
+            return;
+        }
+        if (!isEqualRate && (!formattedItems.some(item => item.rate > 0) || formattedItems.some(item => !Number.isFinite(item.rate) || item.rate < 0))) {
+            Alert.alert('Notice', 'Enter valid positive item weights.');
+            return;
+        }
+        setSaving(true);
+        try {
+            await saveGacha({
+                title: title.trim(), cardImage, isEqualRate, animation,
+                frame: frameId, category: editingGacha?.category ?? 'Custom',
+                cardItems: formattedItems,
+            }, editingGacha?.id);
+            Alert.alert('Success', editingGacha ? 'Gacha updated successfully!' : 'Custom Gacha created successfully!');
+            navigation.goBack();
+        } catch (error) { showApiError(error); }
+        finally { setSaving(false); }
     };
 
     const defaultColors = ['#ff69b4', '#00bfff', '#ffe44d', '#90ee90', '#ba55d3', '#ffa500', '#696969'];
@@ -145,7 +136,7 @@ export default function CreateCustomScreen({ navigation, route }: Props) {
 
     return (
         <SafeAreaView style={styles.safeArea}>
-            <StatusBar barStyle="dark-content" backgroundColor="#ffffff" translucent={false} />
+            <StatusBar barStyle="dark-content" />
             <KeyboardAvoidingView
                 style={styles.keyboardAvoidingView}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}

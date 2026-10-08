@@ -32,7 +32,7 @@ export default function SignUpScreen04({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" translucent={false} />
+      <StatusBar barStyle="dark-content" />
 
       <View style={styles.screenContainer}>
         {/* แถบ Progress Bar ด้านบน */}

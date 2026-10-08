@@ -70,7 +70,7 @@ export default function SignUpScreen01({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" translucent={false} />
+      <StatusBar barStyle="dark-content" />
       <View style={styles.container}>
         {/* แถบสถานะ Progress Bar ตามแบบ Figma */}
         <View style={styles.progressSection}>

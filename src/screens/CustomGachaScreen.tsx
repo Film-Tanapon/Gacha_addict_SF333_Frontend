@@ -7,14 +7,14 @@ import { BOTTOM_NAV_HEIGHT, colors, glassCard, radius } from '../theme/theme';
 import BottomTabBar from '../components/BottomTabBar';
 import CoinBadge from '../components/CoinBadge';
 import DecorativeBlob from '../components/DecorativeBlob';
-import { getCoins, getGachas } from '../data/mockStore';
+import { useAppData } from '../services/appApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CustomGacha'>;
 const MINIMUM_CARD_SLOTS = 5;
 
 export default function CustomGachaScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const gachas = getGachas();
+  const { coins, gachas } = useAppData();
   const emptySlots = Math.max(MINIMUM_CARD_SLOTS - gachas.length, 0);
 
   return (
@@ -30,7 +30,7 @@ export default function CustomGachaScreen({ navigation }: Props) {
         >
           <View style={styles.header}>
             <Text style={styles.title}>Custom</Text>
-            <CoinBadge amount={getCoins()} />
+            <CoinBadge amount={coins} />
           </View>
 
           <View style={styles.grid}>
