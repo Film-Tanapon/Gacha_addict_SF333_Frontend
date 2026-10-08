@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
+import { pickImage } from '../services/imageUpload';
 
 type Props = NativeStackScreenProps<RootStackParamList, any>;
 
@@ -57,8 +58,11 @@ export default function SignUpScreen01({ navigation }: Props) {
 
   const selectedFrame = frames.find((f) => f.id === selectedFrameId);
 
-  const handlePickImage = () => {
-    console.log('Open image picker');
+  const handlePickImage = async () => {
+    try {
+      const uri = await pickImage();
+      if (uri) setSelectedImageUri(uri);
+    } catch (error) { Alert.alert('Error', error instanceof Error ? error.message : 'Cannot select image.'); }
   };
 
   const handleContinue = () => {

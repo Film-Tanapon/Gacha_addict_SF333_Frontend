@@ -17,6 +17,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
 
 import { registerUser } from '../services/authApi';
+import { updateProfile } from '../services/appApi';
+import { isLocalImage, uploadImage } from '../services/imageUpload';
 
 type Props = NativeStackScreenProps<RootStackParamList, any>;
 
@@ -62,16 +64,24 @@ export default function SignUpScreen03({ navigation, route }: Props) {
                 email,
                 password,
                 frameId,
-                profileImage,
+                profileImage: profileImage && !isLocalImage(profileImage) ? profileImage : null,
             };
 
             await registerUser(payload);
-
-
+            let savedImage = payload.profileImage;
+            if (profileImage && isLocalImage(profileImage)) {
+                try {
+                    savedImage = await uploadImage(profileImage);
+                    await updateProfile({ avatarUrl: savedImage });
+                } catch {
+                    Alert.alert('Account created', 'Your account is ready, but the photo could not be saved. Please try again in Edit Profile.');
+                    savedImage = null;
+                }
+            }
             // เมื่อสมัครสำเร็จ นำทางไปยัง Step 4 (Success Screen)
             navigation.replace('SignUpScreen04', {
                 username,
-                profileImage,
+                profileImage: savedImage,
                 frameId,
             });
         } catch (error) {

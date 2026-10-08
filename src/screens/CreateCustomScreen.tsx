@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
     SafeAreaView,
     View,
+    Image,
     Text,
     TextInput,
     TouchableOpacity,
@@ -15,6 +16,8 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
 import { getGachaById, saveGacha, showApiError } from '../services/appApi';
+import { pickImage, uploadImage } from '../services/imageUpload';
+import { getStoredToken } from '../services/authApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateCustom'>;
 
@@ -23,7 +26,14 @@ export default function CreateCustomScreen({ navigation, route }: Props) {
     const editingGacha = params.gachaId ? getGachaById(params.gachaId) : null;
 
     const [title, setTitle] = useState(editingGacha?.name ?? '');
-    const [cardImage] = useState<string | null>(editingGacha?.bannerUri ?? null);
+    const [cardImage, setCardImage] = useState<string | null>(editingGacha?.bannerUri ?? null);
+    const chooseImage = async () => {
+        try {
+            if (!await getStoredToken()) { Alert.alert('Sign in', 'Please sign in to upload a cover image.'); return; }
+            const uri = await pickImage();
+            if (uri) setCardImage(uri);
+        } catch (error) { showApiError(error); }
+    };
     const [isEqualRate, setIsEqualRate] = useState<boolean>(editingGacha?.isEqualRate ?? true);
     const [animation, setAnimation] = useState<string>(editingGacha?.animation ?? 'anim1');
     const [frameId] = useState<string | null>(editingGacha?.frameId ?? null);
@@ -113,8 +123,10 @@ export default function CreateCustomScreen({ navigation, route }: Props) {
         }
         setSaving(true);
         try {
+            const uploadedImage = cardImage ? await uploadImage(cardImage) : null;
+            setCardImage(uploadedImage);
             await saveGacha({
-                title: title.trim(), cardImage, isEqualRate, animation,
+                title: title.trim(), cardImage: uploadedImage, isEqualRate, animation,
                 frame: frameId, category: editingGacha?.category ?? 'Custom',
                 cardItems: formattedItems,
             }, editingGacha?.id);
@@ -157,7 +169,8 @@ export default function CreateCustomScreen({ navigation, route }: Props) {
                     {/* Avatar / Icon */}
                     <View style={styles.avatarContainer}>
                         <View style={[styles.glassAvatarCircle, { borderColor: selectedColor }]}>
-                            <TouchableOpacity style={styles.cameraButton} activeOpacity={0.8}>
+                            {cardImage && <Image source={{ uri: cardImage }} style={styles.coverImage} />}
+                            <TouchableOpacity style={styles.cameraButton} activeOpacity={0.8} disabled={saving} onPress={chooseImage}>
                                 <Text style={styles.cameraEmoji}>📷</Text>
                             </TouchableOpacity>
                         </View>
@@ -437,6 +450,7 @@ const styles = StyleSheet.create({
         elevation: 3,
         position: 'relative',
     },
+    coverImage: { width: '100%', height: '100%', borderRadius: 100 },
     cameraButton: {
         position: 'absolute',
         bottom: 0,

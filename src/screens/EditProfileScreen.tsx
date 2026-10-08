@@ -12,6 +12,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
+import { pickImage, uploadImage } from '../services/imageUpload';
 import BottomTabBar from '../components/BottomTabBar';
 import CoinBadge from '../components/CoinBadge';
 import DecorativeBlob from '../components/DecorativeBlob';
@@ -25,7 +26,12 @@ export default function EditProfileScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const { user, coins: coin, themes, frames } = useAppData(['themes', 'frames', 'user']);
   const username = user?.username ?? route.params.username;
-  const profileImage = user?.avatarUrl ?? route.params.profileImage;
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const profileImage = selectedImage ?? user?.avatarUrl ?? route.params.profileImage;
+  const chooseImage = async () => {
+    try { const uri = await pickImage(); if (uri) setSelectedImage(uri); }
+    catch (error) { showApiError(error); }
+  };
   const frameColor = user?.frameColor ?? route.params.frameColor ?? '#0080ff';
   const ownedThemes = themes.filter(t => t.owned).map(t => ({ id: t.id, color: t.colorPreview }));
   const [editedUsername, setEditedUsername] = useState(username);
@@ -38,7 +44,8 @@ export default function EditProfileScreen({ navigation, route }: Props) {
     if (saving) return;
     setSaving(true);
     try {
-      await updateProfile({ username: editedUsername.trim() || username });
+      const avatarUrl = selectedImage ? await uploadImage(selectedImage) : undefined;
+      await updateProfile({ username: editedUsername.trim() || username, ...(avatarUrl ? { avatarUrl } : {}) });
       if (selectedFrame && selectedFrame !== user?.frameId) await selectFrame(selectedFrame);
       if (selectedTheme && selectedTheme !== user?.selectedThemeId) await selectTheme(selectedTheme);
       Alert.alert('Success', 'Profile updated successfully!');
@@ -63,7 +70,7 @@ export default function EditProfileScreen({ navigation, route }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.avatarSection}>
-          <TouchableOpacity style={styles.avatarWrapper} activeOpacity={0.85} onPress={() => Alert.alert('Profile picture', 'Image picker will be connected here.')}>
+          <TouchableOpacity style={styles.avatarWrapper} activeOpacity={0.85} disabled={saving} onPress={chooseImage}>
             <View style={[styles.avatarCircle, { borderColor: frames.find(f => f.id === selectedFrame)?.color ?? frameColor }]}>
               {profileImage ? (
                 <Image source={{ uri: profileImage }} style={styles.avatarImage} />
