@@ -21,6 +21,15 @@ import { getStoredToken } from '../services/authApi';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateCustom'>;
 
+// รูปแบบ Animation ที่เลือกได้ (ตอนนี้มีเฉพาะ 'card' ถ้าจะเพิ่มแบบใหม่ให้เพิ่มที่นี่
+// และเพิ่มการ render ที่ GachaPullScreen ด้วย)
+const ANIMATION_OPTIONS = [{ id: 'card', label: 'Card', icon: '🎴' }] as const;
+const DEFAULT_ANIMATION = 'card';
+
+// แปลงค่าเก่า (เช่น 'anim1' ที่เคยบันทึกไว้) หรือค่าว่าง ให้เป็นค่าที่ระบบรองรับ
+const normalizeAnimation = (value?: string | null): string =>
+    ANIMATION_OPTIONS.some(option => option.id === value) ? (value as string) : DEFAULT_ANIMATION;
+
 export default function CreateCustomScreen({ navigation, route }: Props) {
     const params = route?.params || {};
     const editingGacha = params.gachaId ? getGachaById(params.gachaId) : null;
@@ -35,7 +44,7 @@ export default function CreateCustomScreen({ navigation, route }: Props) {
         } catch (error) { showApiError(error); }
     };
     const [isEqualRate, setIsEqualRate] = useState<boolean>(editingGacha?.isEqualRate ?? true);
-    const [animation, setAnimation] = useState<string>(editingGacha?.animation ?? 'anim1');
+    const [animation, setAnimation] = useState<string>(normalizeAnimation(editingGacha?.animation));
     const [frameId] = useState<string | null>(editingGacha?.frameId ?? null);
 
     const [selectedColor, setSelectedColor] = useState('#ff69b4');
@@ -126,7 +135,11 @@ export default function CreateCustomScreen({ navigation, route }: Props) {
             const uploadedImage = cardImage ? await uploadImage(cardImage) : null;
             setCardImage(uploadedImage);
             await saveGacha({
+<<<<<<< Updated upstream
                 title: title.trim(), cardImage: uploadedImage, isEqualRate, animation,
+=======
+                title: title.trim(), cardImage, isEqualRate, animation: normalizeAnimation(animation),
+>>>>>>> Stashed changes
                 frame: frameId, category: editingGacha?.category ?? 'Custom',
                 cardItems: formattedItems,
             }, editingGacha?.id);
@@ -153,13 +166,13 @@ export default function CreateCustomScreen({ navigation, route }: Props) {
                 style={styles.keyboardAvoidingView}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             >
-                {/* Header */}
+                {/* Header แก้*/}
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} activeOpacity={0.7}>
-                        <Text style={styles.backIcon}>&lt;</Text>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} activeOpacity={0.7} accessibilityLabel="Go back">
+                        <Text style={styles.backIcon}>‹</Text>
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>{editingGacha ? 'Edit Gacha' : 'Create Custom Gacha'}</Text>
-                    <View style={{ width: 32 }} />
+                    <View style={{ width: 40 }} /> {/* ปรับเป็น 40 ให้สมดุลกับปุ่ม Back */}
                 </View>
 
                 <ScrollView
@@ -254,17 +267,32 @@ export default function CreateCustomScreen({ navigation, route }: Props) {
                     <View style={[styles.inputGroup, styles.glassCard]}>
                         <Text style={styles.inputLabel}>Animation</Text>
                         <View style={styles.animationRow}>
-                            {['anim1', 'anim2', 'anim3'].map((anim, index) => (
-                                <TouchableOpacity
-                                    key={index}
-                                    style={[
-                                        styles.animationBox,
-                                        animation === anim && styles.selectedAnimationBox,
-                                    ]}
-                                    onPress={() => setAnimation(anim)}
-                                    activeOpacity={0.8}
-                                />
-                            ))}
+                            {ANIMATION_OPTIONS.map(option => {
+                                const isActive = animation === option.id;
+                                return (
+                                    <TouchableOpacity
+                                        key={option.id}
+                                        style={[
+                                            styles.animationBox,
+                                            isActive && styles.selectedAnimationBox,
+                                        ]}
+                                        onPress={() => setAnimation(option.id)}
+                                        activeOpacity={0.8}
+                                        accessibilityRole="button"
+                                        accessibilityState={{ selected: isActive }}
+                                    >
+                                        <Text style={styles.animationEmoji}>{option.icon}</Text>
+                                        <Text style={[styles.animationLabel, isActive && styles.animationLabelActive]}>
+                                            {option.label}
+                                        </Text>
+                                        {isActive && (
+                                            <View style={styles.activeBadge}>
+                                                <Text style={styles.activeBadgeText}>✓</Text>
+                                            </View>
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })}
                         </View>
                     </View>
 
@@ -430,8 +458,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         paddingVertical: 12,
     },
-    backButton: { width: 32, height: 32, justifyContent: 'center', alignItems: 'flex-start' },
-    backIcon: { fontSize: 22, fontWeight: '700', color: '#000000' },
+    backButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }, //แก้
+    backIcon: { fontSize: 38, lineHeight: 40, color: '#000000', fontWeight: '300' }, //แก้
     headerTitle: { fontSize: 18, fontWeight: '700', color: '#000000' },
     scrollContent: { paddingHorizontal: 24, paddingBottom: 40, paddingTop: 4 },
     avatarContainer: { alignItems: 'center', marginBottom: 16 },
@@ -527,6 +555,8 @@ const styles = StyleSheet.create({
     animationBox: { 
         width: 86, 
         height: 86, 
+        justifyContent: 'center',
+        alignItems: 'center',
         backgroundColor: '#ffffff', 
         borderRadius: 20, 
         borderWidth: 1.5, 
@@ -539,8 +569,24 @@ const styles = StyleSheet.create({
     },
     selectedAnimationBox: { 
         borderColor: '#00e65c',
-        borderWidth: 2.5 
+        borderWidth: 2.5,
+        backgroundColor: '#f0fdf4',
     },
+    animationEmoji: { fontSize: 30, marginBottom: 4 },
+    animationLabel: { fontSize: 12, fontWeight: '600', color: '#6b7280' },
+    animationLabelActive: { color: '#000000', fontWeight: '700' },
+    activeBadge: {
+        position: 'absolute',
+        top: 6,
+        right: 6,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: '#00e65c',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    activeBadgeText: { fontSize: 12, fontWeight: '800', color: '#ffffff' },
 
     randomListHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
     listTitle: { fontSize: 16, fontWeight: '700', color: '#000000' },
